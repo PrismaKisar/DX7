@@ -26,7 +26,6 @@ class DX7(PyoObject):
             raise TypeError('mode must be string')
         self._mode = mode
         PyoObject.__init__(self, 1, 0)
-        
         notes = Notein(scale=1, poly=32)
         notes.keyboard()
         self._freqs = notes["pitch"]
