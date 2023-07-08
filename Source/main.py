@@ -103,7 +103,24 @@ class DX7(PyoObject):
         tones1.ctrl(map_list=[ratiomap1, indexmap1], title='3')
         tones2.ctrl(map_list=[ratiomap2, indexmap2], title='5')
         self._output = tones1 + tones2 + tones3 + tones4
-        
+
+    def _bell(self):
+        self._getLayout('algoTwentynine.png')
+
+        # --- Detune ---
+        self._detune1 = Sig(2)
+        self._detune2 = Sig(6)
+        self._detune3 = Sig(-13)
+        self._detune4 = Sig(-7)
+
+        # --- Operators Generator ---
+        self._tones1 = FM(self._freqs*(2**(self._detune1/1200)), 13, 0.371, mul=self._amps)
+        self._tones2 = FM(self._freqs*(2**(self._detune2/1200)), 31, 0.188, mul=self._amps)
+        self._tones3 = Sin(self._freqs*(2**(self._detune3/1200)), mul=self._amps)
+        self._tones4 = Sin(self._freqs*(2**(self._detune4/1200)), mul=self._amps)
+
+        self._output = self._tones1 + self._tones2 + self._tones3 + self._tones4
+
     def _electricPiano(self):
         self._getLayout('algoSix.png')
 
