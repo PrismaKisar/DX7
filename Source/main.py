@@ -45,7 +45,7 @@ class DX7(PyoObject):
         self._base_objs = self._output.getBaseObjects()
 
     def _algoSix(self):
-        self._getLayout('algoSix.png')
+        self._getLayout('./Images/algoSix.png')
 
         # --- Detune ---
         detune1 = Sig(1)
@@ -75,7 +75,7 @@ class DX7(PyoObject):
         self._output = tones1 + tones2 + tones3
    
     def _algoTwentynine(self):
-        self._getLayout('algoTwentynine.png')
+        self._getLayout('./Images/algoTwentynine.png')
 
         # --- Detune ---
         detune1 = Sig(1)
@@ -105,7 +105,7 @@ class DX7(PyoObject):
         self._output = tones1 + tones2 + tones3 + tones4
 
     def _bell(self):
-        self._getLayout('algoTwentynine.png')
+        self._getLayout('./Images/algoTwentynine.png')
 
         # --- Detune ---
         self._detune1 = Sig(2)
@@ -122,7 +122,7 @@ class DX7(PyoObject):
         self._output = self._tones1 + self._tones2 + self._tones3 + self._tones4
 
     def _electricPiano(self):
-        self._getLayout('algoSix.png')
+        self._getLayout('./Images/algoSix.png')
 
         # --- Detune ---
         self._detune1 = Sig(-3)
