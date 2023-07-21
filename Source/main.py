@@ -22,59 +22,35 @@ class DX7(PyoObject):
     """
 
     def __init__(self, mode = '6'):
+        PyoObject.__init__(self, 1, 0)
         if not isinstance(mode, str):
             raise TypeError('mode must be string')
-        self._mode = mode
-        PyoObject.__init__(self, 1, 0)
+        self._mode = mode.replace(' ', '')        
+        
+        self._midiSetup()
+        self._algoSelector()
+
+        self._base_objs = self._output.getBaseObjects()
+
+    def _algoSelector(self):
+        algo = getattr(self, '_' + self._mode, None)
+        if algo is not None and callable(algo):
+            algo()
+        else:
+            print("Il metodo specificato non esiste o non è eseguibile.")
+    
+    def _midiSetup(self):
         notes = Notein(scale=1, poly=32)
         notes.keyboard()
         self._freqs = notes["pitch"]
         self._amps = Port(notes["velocity"], risetime=0.005, falltime=0.2)
-        self._amps.ctrl()
+        self._amps.ctrl(title='Attack and Release')
 
-        if mode == '6':
-            self._algoSix()
-        elif mode == '29':
-            self._algoTwentynine()
-        elif mode == 'electric piano':
-            self._electricPiano()
-        elif mode == 'bell':
-            self._bell()
-        else: raise ImplementationError(f'Mode {mode} has not yet been implemented')
+    # def _operatorGenerator(self, op1 = None, op2 = None, op3 = None, op4 = None, op5 = None, op6 = None):
+    #     pass
 
-        self._base_objs = self._output.getBaseObjects()
 
-    def _algoSix(self):
-        self._getLayout('./Images/algoSix.png')
-
-        # --- Detune ---
-        detune1 = Sig(1)
-        detune1.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 0, 'int')], title='detune OP 1')
-        detune2 = Sig(1)
-        detune2.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 0, 'int')], title='detune OP 3')
-        detune3 = Sig(1)
-        detune3.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 0, 'int')], title='detune OP 5')
-
-        # --- Operators Generator ---
-        tones1 = FM(self._freqs*(2**(detune1/1200)), mul=self._amps)
-        tones2 = FM(self._freqs*(2**(detune2/1200)), mul=self._amps)
-        tones3 = FM(self._freqs*(2**(detune3/1200)), mul=self._amps)
-
-        # --- Map ---
-        ratiomap1 = SLMap(1,64,'lin','ratio',1,'int')
-        ratiomap2 = SLMap(1,64,'lin','ratio',1,'int')
-        ratiomap3 = SLMap(1,64,'lin','ratio',1,'int')
-        indexmap1 = SLMap(0,0.5,'lin','index',0)
-        indexmap2 = SLMap(0,0.5,'lin','index',0)
-        indexmap3 = SLMap(0,0.5,'lin','index',0)
-
-        # --- Operator ---
-        tones1.ctrl(map_list=[ratiomap1, indexmap1], title='1')
-        tones2.ctrl(map_list=[ratiomap2, indexmap2], title='3')
-        tones3.ctrl(map_list=[ratiomap3, indexmap3], title='5')
-        self._output = tones1 + tones2 + tones3
-   
-    def _algoTwentynine(self):
+    def _29(self):
         self._getLayout('./Images/algoTwentynine.png')
 
         # --- Detune ---
@@ -104,6 +80,36 @@ class DX7(PyoObject):
         tones2.ctrl(map_list=[ratiomap2, indexmap2], title='5')
         self._output = tones1 + tones2 + tones3 + tones4
 
+    def _6(self):
+        self._getLayout('./Images/algoSix.png')
+
+        # --- Detune ---
+        detune1 = Sig(1)
+        detune1.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 0, 'int')], title='detune OP 1')
+        detune2 = Sig(1)
+        detune2.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 0, 'int')], title='detune OP 3')
+        detune3 = Sig(1)
+        detune3.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 0, 'int')], title='detune OP 5')
+
+        # --- Operators Generator ---
+        tones1 = FM(self._freqs*(2**(detune1/1200)), mul=self._amps)
+        tones2 = FM(self._freqs*(2**(detune2/1200)), mul=self._amps)
+        tones3 = FM(self._freqs*(2**(detune3/1200)), mul=self._amps)
+
+        # --- Map ---
+        ratiomap1 = SLMap(1,64,'lin','ratio',1,'int')
+        ratiomap2 = SLMap(1,64,'lin','ratio',1,'int')
+        ratiomap3 = SLMap(1,64,'lin','ratio',1,'int')
+        indexmap1 = SLMap(0,0.5,'lin','index',0)
+        indexmap2 = SLMap(0,0.5,'lin','index',0)
+        indexmap3 = SLMap(0,0.5,'lin','index',0)
+
+        # --- Operator ---
+        tones1.ctrl(map_list=[ratiomap1, indexmap1], title='1')
+        tones2.ctrl(map_list=[ratiomap2, indexmap2], title='3')
+        tones3.ctrl(map_list=[ratiomap3, indexmap3], title='5')
+        self._output = tones1 + tones2 + tones3
+
     def _bell(self):
         self._getLayout('./Images/algoTwentynine.png')
 
@@ -121,7 +127,7 @@ class DX7(PyoObject):
 
         self._output = self._tones1 + self._tones2 + self._tones3 + self._tones4
 
-    def _electricPiano(self):
+    def _electricpiano(self):
         self._getLayout('./Images/algoSix.png')
 
         # --- Detune ---
@@ -152,13 +158,13 @@ class DX7(PyoObject):
 
     def out(self, chnl=0, inc=1, dur=0, delay=0):
         self._output = Pan(self._output)
-        self._output = Freeverb(self._output,0,0,0)
+        self._output = Freeverb(self._output)
         self._output.ctrl(title='Reverb')
         self._output.out(chnl, inc, dur, delay)
         return self
 
     def ctrl(self):
-        if self._mode == 'electric piano':
+        if self._mode == 'electricpiano':
             self._detune1.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', -3, 'int')], title='detune OP 1')
             self._detune2.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 0, 'int')], title='detune OP 3')
             self._detune3.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 7, 'int')], title='detune OP 5')
@@ -199,7 +205,7 @@ if __name__ == '__main__':
     s = Server().boot()
     s.setAmp(0.1)
     
-    a = DX7('bell').out()
+    a = DX7('electric piano').out()
     a.ctrl()
 
     Spectrum(a)
