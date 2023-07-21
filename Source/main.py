@@ -1,19 +1,22 @@
 from pyo import *
 from PIL import Image
 
-class ImplementationError(Exception): pass
+
+class ImplementationError(Exception):
+    pass
+
 
 class DX7(PyoObject):
     """
     This class provides a simple emulation of the famous Yamaha DX7.
-    
+
     :Parent: :py:class:`PyoObject`
 
     :Args:
 
         mode: str, optional
             algorithm or preset of DX7. Defaults to 6.
-    
+
     >>> s = Server().boot()
     >>> s.setAmp(0.1)
     >>> a = DX7('6').out()
@@ -21,12 +24,12 @@ class DX7(PyoObject):
     >>> s.gui(locals())
     """
 
-    def __init__(self, mode = '6'):
+    def __init__(self, mode: str = '6'):
         PyoObject.__init__(self, 1, 0)
         if not isinstance(mode, str):
             raise TypeError('mode must be string')
-        self._mode = mode.replace(' ', '')        
-        
+        self._mode = mode.replace(' ', '')
+
         self._midiSetup()
         self._algoSelector()
 
@@ -38,7 +41,7 @@ class DX7(PyoObject):
             algo()
         else:
             print("Il metodo specificato non esiste o non è eseguibile.")
-    
+
     def _midiSetup(self):
         notes = Notein(scale=1, poly=32)
         notes.keyboard()
@@ -46,69 +49,116 @@ class DX7(PyoObject):
         self._amps = Port(notes["velocity"], risetime=0.005, falltime=0.2)
         self._amps.ctrl(title='Attack and Release')
 
-    # def _operatorGenerator(self, op1 = None, op2 = None, op3 = None, op4 = None, op5 = None, op6 = None):
-    #     pass
+    def _operatorGenerator(self, op1: str = None, op2: str = None, op3: str = None, op4: str = None, op5: str = None, op6: str = None):
+        self._op1 = self._SinOrFM(op1, '1')
+        self._op2 = self._SinOrFM(op2, '2')
+        self._op3 = self._SinOrFM(op3, '3')
+        self._op4 = self._SinOrFM(op4, '4')
+        self._op5 = self._SinOrFM(op5, '5')
+        self._op6 = self._SinOrFM(op6, '6')
 
+    def _SinOrFM(self, obj: str = 'fm', number: str = '1') -> PyoObject:
+        if obj == None:
+            return None
+
+        obj = obj.lower()
+
+        if number == '1':
+            if obj == 'fm':
+                return FM(self._freqs*(2**(self._detune1/1200)), mul=self._amps)
+            else:
+                return Sin(self._freqs*(2**(self._detune1/1200)), mul=self._amps)
+        elif number == '2':
+            if obj == 'fm':
+                return FM(self._freqs*(2**(self._detune2/1200)), mul=self._amps)
+            else:
+                return Sin(self._freqs*(2**(self._detune2/1200)), mul=self._amps)
+        elif number == '3':
+            if obj == 'fm':
+                return FM(self._freqs*(2**(self._detune3/1200)), mul=self._amps)
+            else:
+                return Sin(self._freqs*(2**(self._detune3/1200)), mul=self._amps)
+        elif number == '4':
+            if obj == 'fm':
+                return FM(self._freqs*(2**(self._detune4/1200)), mul=self._amps)
+            else:
+                return Sin(self._freqs*(2**(self._detune4/1200)), mul=self._amps)
+        elif number == '5':
+            if obj == 'fm':
+                return FM(self._freqs*(2**(self._detune5/1200)), mul=self._amps)
+            else:
+                return Sin(self._freqs*(2**(self._detune5/1200)), mul=self._amps)
+        else:
+            if obj == 'fm':
+                return FM(self._freqs*(2**(self._detune6/1200)), mul=self._amps)
+            else:
+                return Sin(self._freqs*(2**(self._detune6/1200)), mul=self._amps)
+
+    def _detuneGenerator(self, det1: int = None, det2: int = None, det3: int = None, det4: int = None, det5: int = None, det6: int = None):
+        if det1 != None:
+            self._detune1 = Sig(1)
+            self._detune1.ctrl(
+                map_list=[SLMap(-15, 15, 'lin', 'value', det1, 'int')], title='detune OP 1')
+
+        if det2 != None:
+            self._detune2 = Sig(1)
+            self._detune2.ctrl(
+                map_list=[SLMap(-15, 15, 'lin', 'value', det2, 'int')], title='detune OP 2')
+
+        if det3 != None:
+            self._detune3 = Sig(1)
+            self._detune3.ctrl(
+                map_list=[SLMap(-15, 15, 'lin', 'value', det3, 'int')], title='detune OP 3')
+
+        if det4 != None:
+            self._detune4 = Sig(1)
+            self._detune4.ctrl(
+                map_list=[SLMap(-15, 15, 'lin', 'value', det4, 'int')], title='detune OP 4')
+
+        if det5 != None:
+            self._detune5 = Sig(1)
+            self._detune5.ctrl(
+                map_list=[SLMap(-15, 15, 'lin', 'value', det5, 'int')], title='detune OP 5')
+
+        if det6 != None:
+            self._detune6 = Sig(1)
+            self._detune6.ctrl(
+                map_list=[SLMap(-15, 15, 'lin', 'value', det6, 'int')], title='detune OP 6')
 
     def _29(self):
         self._getLayout('./Images/algoTwentynine.png')
-
-        # --- Detune ---
-        detune1 = Sig(1)
-        detune1.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 0, 'int')], title='detune OP 1')
-        detune2 = Sig(1)
-        detune2.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 0, 'int')], title='detune OP 2')
-        detune3 = Sig(1)
-        detune3.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 0, 'int')], title='detune OP 3')
-        detune4 = Sig(1)
-        detune4.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 0, 'int')], title='detune OP 5')
-
-        # --- Operators Generator ---
-        tones1 = FM(self._freqs*(2**(detune1/1200)), mul=self._amps)
-        tones2 = FM(self._freqs*(2**(detune2/1200)), mul=self._amps)
-        tones3 = Sin(self._freqs*(2**(detune3/1200)), mul=self._amps)
-        tones4 = Sin(self._freqs*(2**(detune4/1200)), mul=self._amps)
+        self._detuneGenerator(0, 0, 0, 0)
+        self._operatorGenerator('fm', 'fm', 'sin', 'sin')
 
         # --- Map ---
-        ratiomap1 = SLMap(1,64,'lin','ratio',1,'int')
-        ratiomap2 = SLMap(1,64,'lin','ratio',1,'int')
-        indexmap1 = SLMap(0,0.5,'lin','index',0)
-        indexmap2 = SLMap(0,0.5,'lin','index',0)
+        ratiomap1 = SLMap(1, 64, 'lin', 'ratio', 1, 'int')
+        ratiomap2 = SLMap(1, 64, 'lin', 'ratio', 1, 'int')
+        indexmap1 = SLMap(0, 0.5, 'lin', 'index', 0)
+        indexmap2 = SLMap(0, 0.5, 'lin', 'index', 0)
 
         # --- Operator ---
-        tones1.ctrl(map_list=[ratiomap1, indexmap1], title='3')
-        tones2.ctrl(map_list=[ratiomap2, indexmap2], title='5')
-        self._output = tones1 + tones2 + tones3 + tones4
+        self._op1.ctrl(map_list=[ratiomap1, indexmap1], title='3')
+        self._op2.ctrl(map_list=[ratiomap2, indexmap2], title='5')
+        self._output = self._op1 + self._op2 + self._op3 + self._op4
 
     def _6(self):
         self._getLayout('./Images/algoSix.png')
-
-        # --- Detune ---
-        detune1 = Sig(1)
-        detune1.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 0, 'int')], title='detune OP 1')
-        detune2 = Sig(1)
-        detune2.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 0, 'int')], title='detune OP 3')
-        detune3 = Sig(1)
-        detune3.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 0, 'int')], title='detune OP 5')
-
-        # --- Operators Generator ---
-        tones1 = FM(self._freqs*(2**(detune1/1200)), mul=self._amps)
-        tones2 = FM(self._freqs*(2**(detune2/1200)), mul=self._amps)
-        tones3 = FM(self._freqs*(2**(detune3/1200)), mul=self._amps)
+        self._detuneGenerator(0, 0, 0)
+        self._operatorGenerator('fm', 'fm', 'fm')
 
         # --- Map ---
-        ratiomap1 = SLMap(1,64,'lin','ratio',1,'int')
-        ratiomap2 = SLMap(1,64,'lin','ratio',1,'int')
-        ratiomap3 = SLMap(1,64,'lin','ratio',1,'int')
-        indexmap1 = SLMap(0,0.5,'lin','index',0)
-        indexmap2 = SLMap(0,0.5,'lin','index',0)
-        indexmap3 = SLMap(0,0.5,'lin','index',0)
+        ratiomap1 = SLMap(1, 64, 'lin', 'ratio', 1, 'int')
+        ratiomap2 = SLMap(1, 64, 'lin', 'ratio', 1, 'int')
+        ratiomap3 = SLMap(1, 64, 'lin', 'ratio', 1, 'int')
+        indexmap1 = SLMap(0, 0.5, 'lin', 'index', 0)
+        indexmap2 = SLMap(0, 0.5, 'lin', 'index', 0)
+        indexmap3 = SLMap(0, 0.5, 'lin', 'index', 0)
 
         # --- Operator ---
-        tones1.ctrl(map_list=[ratiomap1, indexmap1], title='1')
-        tones2.ctrl(map_list=[ratiomap2, indexmap2], title='3')
-        tones3.ctrl(map_list=[ratiomap3, indexmap3], title='5')
-        self._output = tones1 + tones2 + tones3
+        self._op1.ctrl(map_list=[ratiomap1, indexmap1], title='1')
+        self._op2.ctrl(map_list=[ratiomap2, indexmap2], title='3')
+        self._op3.ctrl(map_list=[ratiomap3, indexmap3], title='5')
+        self._output = self._op1 + self._op2 + self._op3
 
     def _bell(self):
         self._getLayout('./Images/algoTwentynine.png')
@@ -120,10 +170,14 @@ class DX7(PyoObject):
         self._detune4 = Sig(-7)
 
         # --- Operators Generator ---
-        self._tones1 = FM(self._freqs*(2**(self._detune1/1200)), 13, 0.371, mul=self._amps)
-        self._tones2 = FM(self._freqs*(2**(self._detune2/1200)), 31, 0.188, mul=self._amps)
-        self._tones3 = Sin(self._freqs*(2**(self._detune3/1200)), mul=self._amps)
-        self._tones4 = Sin(self._freqs*(2**(self._detune4/1200)), mul=self._amps)
+        self._tones1 = FM(self._freqs*(2**(self._detune1/1200)),
+                          13, 0.371, mul=self._amps)
+        self._tones2 = FM(self._freqs*(2**(self._detune2/1200)),
+                          31, 0.188, mul=self._amps)
+        self._tones3 = Sin(
+            self._freqs*(2**(self._detune3/1200)), mul=self._amps)
+        self._tones4 = Sin(
+            self._freqs*(2**(self._detune4/1200)), mul=self._amps)
 
         self._output = self._tones1 + self._tones2 + self._tones3 + self._tones4
 
@@ -136,9 +190,12 @@ class DX7(PyoObject):
         self._detune3 = Sig(7)
 
         # --- Operators Generator ---
-        self._tones1 = FM(self._freqs*(2**(self._detune1/1200)), 1, 0.060, self._amps)
-        self._tones2 = FM(self._freqs*(2**(self._detune2/1200)), 14, 0.004, self._amps)
-        self._tones3 = FM(self._freqs*(2**(self._detune3/1200)), 1, 0.023, self._amps)
+        self._tones1 = FM(
+            self._freqs*(2**(self._detune1/1200)), 1, 0.060, self._amps)
+        self._tones2 = FM(
+            self._freqs*(2**(self._detune2/1200)), 14, 0.004, self._amps)
+        self._tones3 = FM(
+            self._freqs*(2**(self._detune3/1200)), 1, 0.023, self._amps)
 
         self._output = self._tones1 + self._tones2 + self._tones3
 
@@ -165,17 +222,20 @@ class DX7(PyoObject):
 
     def ctrl(self):
         if self._mode == 'electricpiano':
-            self._detune1.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', -3, 'int')], title='detune OP 1')
-            self._detune2.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 0, 'int')], title='detune OP 3')
-            self._detune3.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 7, 'int')], title='detune OP 5')
+            self._detune1.ctrl(
+                map_list=[SLMap(-15, 15, 'lin', 'value', -3, 'int')], title='detune OP 1')
+            self._detune2.ctrl(
+                map_list=[SLMap(-15, 15, 'lin', 'value', 0, 'int')], title='detune OP 3')
+            self._detune3.ctrl(
+                map_list=[SLMap(-15, 15, 'lin', 'value', 7, 'int')], title='detune OP 5')
 
             # --- Map ---
-            ratiomap1 = SLMap(0.5,64,'lin','ratio',1,'int')
-            ratiomap2 = SLMap(1,64,'lin','ratio',14,'int')
-            ratiomap3 = SLMap(1,64,'lin','ratio',1,'int')
-            indexmap1 = SLMap(0,0.5,'lin','index',0.060)
-            indexmap2 = SLMap(0,0.5,'lin','index',0.004)
-            indexmap3 = SLMap(0,0.5,'lin','index',0.023)
+            ratiomap1 = SLMap(0.5, 64, 'lin', 'ratio', 1, 'int')
+            ratiomap2 = SLMap(1, 64, 'lin', 'ratio', 14, 'int')
+            ratiomap3 = SLMap(1, 64, 'lin', 'ratio', 1, 'int')
+            indexmap1 = SLMap(0, 0.5, 'lin', 'index', 0.060)
+            indexmap2 = SLMap(0, 0.5, 'lin', 'index', 0.004)
+            indexmap3 = SLMap(0, 0.5, 'lin', 'index', 0.023)
 
             # --- Operator ---
             self._tones1.ctrl(map_list=[ratiomap1, indexmap1], title='1')
@@ -183,43 +243,36 @@ class DX7(PyoObject):
             self._tones3.ctrl(map_list=[ratiomap3, indexmap3], title='5')
 
         elif self._mode == 'bell':
-            self._detune1.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 2, 'int')], title='detune OP 1')
-            self._detune2.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', 6, 'int')], title='detune OP 2')
-            self._detune3.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', -13, 'int')], title='detune OP 3')
-            self._detune4.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', -7, 'int')], title='detune OP 5')
-            
+            self._detune1.ctrl(
+                map_list=[SLMap(-15, 15, 'lin', 'value', 2, 'int')], title='detune OP 1')
+            self._detune2.ctrl(
+                map_list=[SLMap(-15, 15, 'lin', 'value', 6, 'int')], title='detune OP 2')
+            self._detune3.ctrl(
+                map_list=[SLMap(-15, 15, 'lin', 'value', -13, 'int')], title='detune OP 3')
+            self._detune4.ctrl(
+                map_list=[SLMap(-15, 15, 'lin', 'value', -7, 'int')], title='detune OP 5')
+
             # --- Map ---
-            ratiomap1 = SLMap(1,64,'lin','ratio',13,'int')
-            ratiomap2 = SLMap(1,64,'lin','ratio',31,'int')
-            indexmap1 = SLMap(0,0.5,'lin','index',0.371)
-            indexmap2 = SLMap(0,0.5,'lin','index',0.188)
+            ratiomap1 = SLMap(1, 64, 'lin', 'ratio', 13, 'int')
+            ratiomap2 = SLMap(1, 64, 'lin', 'ratio', 31, 'int')
+            indexmap1 = SLMap(0, 0.5, 'lin', 'index', 0.371)
+            indexmap2 = SLMap(0, 0.5, 'lin', 'index', 0.188)
 
             # --- Operator ---
             self._tones1.ctrl(map_list=[ratiomap1, indexmap1], title='3')
             self._tones2.ctrl(map_list=[ratiomap2, indexmap2], title='5')
-                    
+
     def __repr__(self):
         return super().__repr__()
+
 
 if __name__ == '__main__':
     s = Server().boot()
     s.setAmp(0.1)
-    
-    a = DX7('electric piano').out()
+
+    a = DX7('6').out()
     a.ctrl()
 
     Spectrum(a)
 
     s.gui(locals())
-
-
-
-
-   
-
-
-
-   
-        
-
-    
