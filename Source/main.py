@@ -6,6 +6,10 @@ class ImplementationError(Exception):
     pass
 
 
+class OperatorNumberError(Exception):
+    pass
+
+
 class DX7(PyoObject):
     """
     This class provides a simple emulation of the famous Yamaha DX7.
@@ -49,50 +53,78 @@ class DX7(PyoObject):
         self._amps = Port(notes["velocity"], risetime=0.005, falltime=0.2)
         self._amps.ctrl(title='Attack and Release')
 
-    def _operatorGenerator(self, op1: str = None, op2: str = None, op3: str = None, op4: str = None, op5: str = None, op6: str = None):
-        self._op1 = self._SinOrFM(op1, '1')
-        self._op2 = self._SinOrFM(op2, '2')
-        self._op3 = self._SinOrFM(op3, '3')
-        self._op4 = self._SinOrFM(op4, '4')
-        self._op5 = self._SinOrFM(op5, '5')
-        self._op6 = self._SinOrFM(op6, '6')
+    def _operatorGenerator(self, op1=None, op2=None, op3=None, op4=None, op5=None, op6=None):
+        """
+        This method take in input 6 lists (if fm) or str (if sin), one for each operator. The lists contain in this exact order:
 
-    def _SinOrFM(self, obj: str = 'fm', number: str = '1') -> PyoObject:
-        if obj == None:
-            return None
+            ratio: int [1,64]
+                A factor that, when multiplied by the carrier parameter, gives the modulator frequency.
+            index: float [0,0.5]
+                The modulation index. This value multiplied by the modulator frequency gives the modulator amplitude.
+        """
 
-        obj = obj.lower()
+        self._sinCount, self._fmCount = 0, 0
+        self._opSituation = []
 
-        if number == '1':
-            if obj == 'fm':
-                return FM(self._freqs*(2**(self._detune1/1200)), mul=self._amps)
-            else:
-                return Sin(self._freqs*(2**(self._detune1/1200)), mul=self._amps)
-        elif number == '2':
-            if obj == 'fm':
-                return FM(self._freqs*(2**(self._detune2/1200)), mul=self._amps)
-            else:
-                return Sin(self._freqs*(2**(self._detune2/1200)), mul=self._amps)
-        elif number == '3':
-            if obj == 'fm':
-                return FM(self._freqs*(2**(self._detune3/1200)), mul=self._amps)
-            else:
-                return Sin(self._freqs*(2**(self._detune3/1200)), mul=self._amps)
-        elif number == '4':
-            if obj == 'fm':
-                return FM(self._freqs*(2**(self._detune4/1200)), mul=self._amps)
-            else:
-                return Sin(self._freqs*(2**(self._detune4/1200)), mul=self._amps)
-        elif number == '5':
-            if obj == 'fm':
-                return FM(self._freqs*(2**(self._detune5/1200)), mul=self._amps)
-            else:
-                return Sin(self._freqs*(2**(self._detune5/1200)), mul=self._amps)
-        else:
-            if obj == 'fm':
-                return FM(self._freqs*(2**(self._detune6/1200)), mul=self._amps)
-            else:
-                return Sin(self._freqs*(2**(self._detune6/1200)), mul=self._amps)
+        if isinstance(op1, str):
+            self._op1 = self._SinOrFM('sin', '1')
+            self._sinCount += 1
+            self._opSituation.append('s')
+        elif isinstance(op1, list):
+            self._op1 = self._SinOrFM('fm', '1', op1[0], op1[1])
+            self._fmCount += 1
+            self._opSituation.append('f')
+
+        if isinstance(op2, str):
+            self._op2 = self._SinOrFM('sin', '2')
+            self._sinCount += 1
+            self._opSituation.append('s')
+        elif isinstance(op2, list):
+            self._op2 = self._SinOrFM('fm', '2', op2[0], op2[1])
+            self._fmCount += 1
+            self._opSituation.append('f')
+
+        if isinstance(op3, str):
+            self._op3 = self._SinOrFM('sin', '3')
+            self._sinCount += 1
+            self._opSituation.append('s')
+        elif isinstance(op3, list):
+            self._op3 = self._SinOrFM('fm', '3', op3[0], op3[1])
+            self._fmCount += 1
+            self._opSituation.append('f')
+
+        if isinstance(op4, str):
+            self._op4 = self._SinOrFM('sin', '4')
+            self._sinCount += 1
+            self._opSituation.append('s')
+        elif isinstance(op4, list):
+            self._op4 = self._SinOrFM('fm', '4', op4[0], op4[1])
+            self._fmCount += 1
+            self._opSituation.append('f')
+
+        self._countChecker()
+
+        if isinstance(op5, str):
+            self._op5 = self._SinOrFM('sin', '5')
+            self._sinCount += 1
+            self._opSituation.append('s')
+        elif isinstance(op5, list):
+            self._op5 = self._SinOrFM('fm', '5', op5[0], op5[1])
+            self._fmCount += 1
+            self._opSituation.append('f')
+
+        self._countChecker()
+
+        if isinstance(op6, str):
+            self._op6 = self._SinOrFM('sin', '6')
+            self._sinCount += 1
+            self._opSituation.append('s')
+        elif isinstance(op6, list):
+            self._op6 = self._SinOrFM('fm', '6', op6[0], op6[1])
+            self._fmCount += 1
+            self._opSituation.append('f')
+
+        self._countChecker()
 
     def _detuneGenerator(self, det1: int = None, det2: int = None, det3: int = None, det4: int = None, det5: int = None, det6: int = None):
         if det1 != None:
@@ -125,102 +157,50 @@ class DX7(PyoObject):
             self._detune6.ctrl(
                 map_list=[SLMap(-15, 15, 'lin', 'value', det6, 'int')], title='detune OP 6')
 
-    def _29(self):
-        self._getLayout('./Images/algoTwentynine.png')
-        self._detuneGenerator(0, 0, 0, 0)
-        self._operatorGenerator('fm', 'fm', 'sin', 'sin')
+    def _ctrlGenerator(self, op1=None, op2=None, op3=None, op4=None, op5=None, op6=None):
+        """
+        This method must have the exact same input as operatorGenerator().
+        """
+        if self._opSituation[0] == 'f':
+            ratiomap1 = SLMap(1, 64, 'lin', 'ratio', op1[0], 'int')
+            indexmap1 = SLMap(0, 0.5, 'lin', 'index', op1[1])
+            self._op1.ctrl(map_list=[ratiomap1, indexmap1], title='Operator 1')
 
-        # --- Map ---
-        ratiomap1 = SLMap(1, 64, 'lin', 'ratio', 1, 'int')
-        ratiomap2 = SLMap(1, 64, 'lin', 'ratio', 1, 'int')
-        indexmap1 = SLMap(0, 0.5, 'lin', 'index', 0)
-        indexmap2 = SLMap(0, 0.5, 'lin', 'index', 0)
+        if self._opSituation[1] == 'f':
+            ratiomap2 = SLMap(1, 64, 'lin', 'ratio', op2[0], 'int')
+            indexmap2 = SLMap(0, 0.5, 'lin', 'index', op2[1])
+            self._op2.ctrl(map_list=[ratiomap2, indexmap2], title='Operator 2')
 
-        # --- Operator ---
-        self._op1.ctrl(map_list=[ratiomap1, indexmap1], title='3')
-        self._op2.ctrl(map_list=[ratiomap2, indexmap2], title='5')
-        self._output = self._op1 + self._op2 + self._op3 + self._op4
+        if self._opSituation[2] == 'f':
+            ratiomap3 = SLMap(1, 64, 'lin', 'ratio', op3[0], 'int')
+            indexmap3 = SLMap(0, 0.5, 'lin', 'index', op3[1])
+            self._op3.ctrl(map_list=[ratiomap3, indexmap3], title='Operator 3')
 
-    def _6(self):
-        self._getLayout('./Images/algoSix.png')
-        self._detuneGenerator(0, 0, 0)
-        self._operatorGenerator('fm', 'fm', 'fm')
+        if len(self._opSituation) == 3:
+            return
 
-        # --- Map ---
-        ratiomap1 = SLMap(1, 64, 'lin', 'ratio', 1, 'int')
-        ratiomap2 = SLMap(1, 64, 'lin', 'ratio', 1, 'int')
-        ratiomap3 = SLMap(1, 64, 'lin', 'ratio', 1, 'int')
-        indexmap1 = SLMap(0, 0.5, 'lin', 'index', 0)
-        indexmap2 = SLMap(0, 0.5, 'lin', 'index', 0)
-        indexmap3 = SLMap(0, 0.5, 'lin', 'index', 0)
+        if self._opSituation[3] == 'f':
+            ratiomap4 = SLMap(1, 64, 'lin', 'ratio', op4[0], 'int')
+            indexmap4 = SLMap(0, 0.5, 'lin', 'index', op4[1])
+            self._op4.ctrl(map_list=[ratiomap4, indexmap4], title='Operator 4')
 
-        # --- Operator ---
-        self._op1.ctrl(map_list=[ratiomap1, indexmap1], title='1')
-        self._op2.ctrl(map_list=[ratiomap2, indexmap2], title='3')
-        self._op3.ctrl(map_list=[ratiomap3, indexmap3], title='5')
-        self._output = self._op1 + self._op2 + self._op3
+        if len(self._opSituation) == 4:
+            return
 
-    def _bell(self):
-        self._getLayout('./Images/algoTwentynine.png')
+        if self._opSituation[4] == 'f':
+            ratiomap5 = SLMap(1, 64, 'lin', 'ratio', op5[0], 'int')
+            indexmap5 = SLMap(0, 0.5, 'lin', 'index', op5[1])
+            self._op5.ctrl(map_list=[ratiomap5, indexmap5], title='Operator 5')
 
-        # --- Detune ---
-        self._detune1 = Sig(2)
-        self._detune2 = Sig(6)
-        self._detune3 = Sig(-13)
-        self._detune4 = Sig(-7)
+        if len(self._opSituation) == 5:
+            return
 
-        # --- Operators Generator ---
-        self._tones1 = FM(self._freqs*(2**(self._detune1/1200)),
-                          13, 0.371, mul=self._amps)
-        self._tones2 = FM(self._freqs*(2**(self._detune2/1200)),
-                          31, 0.188, mul=self._amps)
-        self._tones3 = Sin(
-            self._freqs*(2**(self._detune3/1200)), mul=self._amps)
-        self._tones4 = Sin(
-            self._freqs*(2**(self._detune4/1200)), mul=self._amps)
+        if self._opSituation[5] == 'f':
+            ratiomap6 = SLMap(1, 64, 'lin', 'ratio', op6[0], 'int')
+            indexmap6 = SLMap(0, 0.5, 'lin', 'index', op6[1])
+            self._op6.ctrl(map_list=[ratiomap6, indexmap6], title='Operator 6')
 
-        self._output = self._tones1 + self._tones2 + self._tones3 + self._tones4
-
-    def _electricpiano(self):
-        self._getLayout('./Images/algoSix.png')
-
-        # --- Detune ---
-        self._detune1 = Sig(-3)
-        self._detune2 = Sig(0)
-        self._detune3 = Sig(7)
-
-        # --- Operators Generator ---
-        self._tones1 = FM(
-            self._freqs*(2**(self._detune1/1200)), 1, 0.060, self._amps)
-        self._tones2 = FM(
-            self._freqs*(2**(self._detune2/1200)), 14, 0.004, self._amps)
-        self._tones3 = FM(
-            self._freqs*(2**(self._detune3/1200)), 1, 0.023, self._amps)
-
-        self._output = self._tones1 + self._tones2 + self._tones3
-
-    @staticmethod
-    def _getLayout(image):
-        image = Image.open(image)
-        resized_image = image.resize((200, 200))
-        resized_image.show()
-
-    def play(self, dur=0, delay=0):
-        self._output.play(dur, delay)
-        return self
-
-    def stop(self, wait=0):
-        self._output.stop(wait)
-        return self
-
-    def out(self, chnl=0, inc=1, dur=0, delay=0):
-        self._output = Pan(self._output)
-        self._output = Freeverb(self._output)
-        self._output.ctrl(title='Reverb')
-        self._output.out(chnl, inc, dur, delay)
-        return self
-
-    def ctrl(self):
+  #  def ctrl(self):
         if self._mode == 'electricpiano':
             self._detune1.ctrl(
                 map_list=[SLMap(-15, 15, 'lin', 'value', -3, 'int')], title='detune OP 1')
@@ -262,16 +242,106 @@ class DX7(PyoObject):
             self._tones1.ctrl(map_list=[ratiomap1, indexmap1], title='3')
             self._tones2.ctrl(map_list=[ratiomap2, indexmap2], title='5')
 
+    def _countChecker(self):
+        count = self._sinCount + (2*self._fmCount)
+        if count > 6:
+            raise OperatorNumberError(
+                "The must be less than 7, otherwise it wouldn't be a dx7")
+
+    def _SinOrFM(self, obj, number, ratio=None, index=None):
+        if number == '1':
+            if obj == 'fm':
+                return FM(self._freqs*(2**(self._detune1/1200)), ratio, index, mul=self._amps)
+            else:
+                return Sin(self._freqs*(2**(self._detune1/1200)), mul=self._amps)
+        elif number == '2':
+            if obj == 'fm':
+                return FM(self._freqs*(2**(self._detune2/1200)), ratio, index, mul=self._amps)
+            else:
+                return Sin(self._freqs*(2**(self._detune2/1200)), mul=self._amps)
+        elif number == '3':
+            if obj == 'fm':
+                return FM(self._freqs*(2**(self._detune3/1200)), ratio, index, mul=self._amps)
+            else:
+                return Sin(self._freqs*(2**(self._detune3/1200)), mul=self._amps)
+        elif number == '4':
+            if obj == 'fm':
+                return FM(self._freqs*(2**(self._detune4/1200)), ratio, index, mul=self._amps)
+            else:
+                return Sin(self._freqs*(2**(self._detune4/1200)), mul=self._amps)
+        elif number == '5':
+            if obj == 'fm':
+                return FM(self._freqs*(2**(self._detune5/1200)), ratio, index, mul=self._amps)
+            else:
+                return Sin(self._freqs*(2**(self._detune5/1200)), mul=self._amps)
+        else:
+            if obj == 'fm':
+                return FM(self._freqs*(2**(self._detune6/1200)), ratio, index, mul=self._amps)
+            else:
+                return Sin(self._freqs*(2**(self._detune6/1200)), mul=self._amps)
+
+    @staticmethod
+    def _getLayout(image):
+        image = Image.open(image)
+        resized_image = image.resize((200, 200))
+        resized_image.show()
+
+    def play(self, dur=0, delay=0):
+        self._output.play(dur, delay)
+        return self
+
+    def stop(self, wait=0):
+        self._output.stop(wait)
+        return self
+
+    def out(self, chnl=0, inc=1, dur=0, delay=0):
+        self._output = Pan(self._output)
+        self._output = Freeverb(self._output)
+        self._output.ctrl(title='Reverb')
+        self._output.out(chnl, inc, dur, delay)
+        return self
+
     def __repr__(self):
         return super().__repr__()
+
+# ----- DEFAULT ALGORITHMS ----- #
+
+    def _29(self):
+        self._getLayout('./Images/algoTwentynine.png')
+        self._detuneGenerator(0, 0, 0, 0)
+        self._operatorGenerator([1, 0], [1, 0], 'sin', 'sin')
+        self._ctrlGenerator([1, 0], [1, 0], 'sin', 'sin')
+        self._output = self._op1 + self._op2 + self._op3 + self._op4
+
+    def _6(self):
+        self._getLayout('./Images/algoSix.png')
+        self._detuneGenerator(0, 0, 0)
+        self._operatorGenerator([1, 0], [1, 0], [1, 0])
+        self._ctrlGenerator([1, 0], [1, 0], [1, 0])
+        self._output = self._op1 + self._op2 + self._op3
+
+    def _bell(self):
+        self._getLayout('./Images/algoTwentynine.png')
+        self._detuneGenerator(2, 6, -13, -7)
+        self._operatorGenerator([13, 0.371], [31, 0.188], 'sin', 'sin')
+        self._ctrlGenerator([13, 0.371], [31, 0.188], 'sin', 'sin')
+        self._output = self._op1 + self._op2 + self._op3 + self._op4
+
+    def _electricpiano(self):
+        self._getLayout('./Images/algoSix.png')
+        self._detuneGenerator(-3, 0, 7)
+        self._operatorGenerator([1, 0.060], [14, 0.004], [1, 0.023])
+        self._ctrlGenerator([1, 0.060], [14, 0.004], [1, 0.023])
+        self._output = self._op1 + self._op2 + self._op3
+
+# ----- USER ALGORITHMS
 
 
 if __name__ == '__main__':
     s = Server().boot()
     s.setAmp(0.1)
 
-    a = DX7('6').out()
-    a.ctrl()
+    a = DX7('electric piano').out()
 
     Spectrum(a)
 
