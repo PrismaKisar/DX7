@@ -128,32 +128,32 @@ class DX7(PyoObject):
 
     def _detuneGenerator(self, det1: int = None, det2: int = None, det3: int = None, det4: int = None, det5: int = None, det6: int = None):
         if det1 != None:
-            self._detune1 = Sig(1)
+            self._detune1 = Sig(det1)
             self._detune1.ctrl(
                 map_list=[SLMap(-15, 15, 'lin', 'value', det1, 'int')], title='detune OP 1')
 
         if det2 != None:
-            self._detune2 = Sig(1)
+            self._detune2 = Sig(det2)
             self._detune2.ctrl(
                 map_list=[SLMap(-15, 15, 'lin', 'value', det2, 'int')], title='detune OP 2')
 
         if det3 != None:
-            self._detune3 = Sig(1)
+            self._detune3 = Sig(det3)
             self._detune3.ctrl(
                 map_list=[SLMap(-15, 15, 'lin', 'value', det3, 'int')], title='detune OP 3')
 
         if det4 != None:
-            self._detune4 = Sig(1)
+            self._detune4 = Sig(det4)
             self._detune4.ctrl(
                 map_list=[SLMap(-15, 15, 'lin', 'value', det4, 'int')], title='detune OP 4')
 
         if det5 != None:
-            self._detune5 = Sig(1)
+            self._detune5 = Sig(det5)
             self._detune5.ctrl(
                 map_list=[SLMap(-15, 15, 'lin', 'value', det5, 'int')], title='detune OP 5')
 
         if det6 != None:
-            self._detune6 = Sig(1)
+            self._detune6 = Sig(det6)
             self._detune6.ctrl(
                 map_list=[SLMap(-15, 15, 'lin', 'value', det6, 'int')], title='detune OP 6')
 
@@ -200,47 +200,22 @@ class DX7(PyoObject):
             indexmap6 = SLMap(0, 0.5, 'lin', 'index', op6[1])
             self._op6.ctrl(map_list=[ratiomap6, indexmap6], title='Operator 6')
 
-  #  def ctrl(self):
-        if self._mode == 'electricpiano':
-            self._detune1.ctrl(
-                map_list=[SLMap(-15, 15, 'lin', 'value', -3, 'int')], title='detune OP 1')
-            self._detune2.ctrl(
-                map_list=[SLMap(-15, 15, 'lin', 'value', 0, 'int')], title='detune OP 3')
-            self._detune3.ctrl(
-                map_list=[SLMap(-15, 15, 'lin', 'value', 7, 'int')], title='detune OP 5')
-
-            # --- Map ---
-            ratiomap1 = SLMap(0.5, 64, 'lin', 'ratio', 1, 'int')
-            ratiomap2 = SLMap(1, 64, 'lin', 'ratio', 14, 'int')
-            ratiomap3 = SLMap(1, 64, 'lin', 'ratio', 1, 'int')
-            indexmap1 = SLMap(0, 0.5, 'lin', 'index', 0.060)
-            indexmap2 = SLMap(0, 0.5, 'lin', 'index', 0.004)
-            indexmap3 = SLMap(0, 0.5, 'lin', 'index', 0.023)
-
-            # --- Operator ---
-            self._tones1.ctrl(map_list=[ratiomap1, indexmap1], title='1')
-            self._tones2.ctrl(map_list=[ratiomap2, indexmap2], title='3')
-            self._tones3.ctrl(map_list=[ratiomap3, indexmap3], title='5')
-
-        elif self._mode == 'bell':
-            self._detune1.ctrl(
-                map_list=[SLMap(-15, 15, 'lin', 'value', 2, 'int')], title='detune OP 1')
-            self._detune2.ctrl(
-                map_list=[SLMap(-15, 15, 'lin', 'value', 6, 'int')], title='detune OP 2')
-            self._detune3.ctrl(
-                map_list=[SLMap(-15, 15, 'lin', 'value', -13, 'int')], title='detune OP 3')
-            self._detune4.ctrl(
-                map_list=[SLMap(-15, 15, 'lin', 'value', -7, 'int')], title='detune OP 5')
-
-            # --- Map ---
-            ratiomap1 = SLMap(1, 64, 'lin', 'ratio', 13, 'int')
-            ratiomap2 = SLMap(1, 64, 'lin', 'ratio', 31, 'int')
-            indexmap1 = SLMap(0, 0.5, 'lin', 'index', 0.371)
-            indexmap2 = SLMap(0, 0.5, 'lin', 'index', 0.188)
-
-            # --- Operator ---
-            self._tones1.ctrl(map_list=[ratiomap1, indexmap1], title='3')
-            self._tones2.ctrl(map_list=[ratiomap2, indexmap2], title='5')
+    def _outputGenerator(self):
+        opNumber = self._fmCount + self._sinCount
+        self._output = 0
+        for x in range(1, opNumber):
+            if x == 1:
+                self._output += self._op1
+            if x == 2:
+                self._output += self._op2
+            if x == 3:
+                self._output += self._op3
+            if x == 4:
+                self._output += self._op4
+            if x == 5:
+                self._output += self._op5
+            if x == 6:
+                self._output += self._op6
 
     def _countChecker(self):
         count = self._sinCount + (2*self._fmCount)
@@ -311,37 +286,67 @@ class DX7(PyoObject):
         self._detuneGenerator(0, 0, 0, 0)
         self._operatorGenerator([1, 0], [1, 0], 'sin', 'sin')
         self._ctrlGenerator([1, 0], [1, 0], 'sin', 'sin')
-        self._output = self._op1 + self._op2 + self._op3 + self._op4
+        self._outputGenerator()
 
     def _6(self):
         self._getLayout('./Images/algoSix.png')
         self._detuneGenerator(0, 0, 0)
         self._operatorGenerator([1, 0], [1, 0], [1, 0])
         self._ctrlGenerator([1, 0], [1, 0], [1, 0])
-        self._output = self._op1 + self._op2 + self._op3
+        self._outputGenerator()
 
     def _bell(self):
         self._getLayout('./Images/algoTwentynine.png')
         self._detuneGenerator(2, 6, -13, -7)
         self._operatorGenerator([13, 0.371], [31, 0.188], 'sin', 'sin')
         self._ctrlGenerator([13, 0.371], [31, 0.188], 'sin', 'sin')
-        self._output = self._op1 + self._op2 + self._op3 + self._op4
+        self._outputGenerator()
 
     def _electricpiano(self):
         self._getLayout('./Images/algoSix.png')
         self._detuneGenerator(-3, 0, 7)
         self._operatorGenerator([1, 0.060], [14, 0.004], [1, 0.023])
         self._ctrlGenerator([1, 0.060], [14, 0.004], [1, 0.023])
-        self._output = self._op1 + self._op2 + self._op3
+        self._outputGenerator()
+    
+    def _user(self):
+        print('\n--- Step 1 ---\nYou have to decide the number of operator with FM synthesis. Please note that DX7 has 6 operators and FM operator worth for two because is implicit that a sin modules it.')
+        fmop = int(input('Insert number of FM operators (max 3): '))
 
-# ----- USER ALGORITHMS
+        print('\n--- Step 2 ---\nThe number of master operators is 6 - number of fm operators so {}. Then, to know how many sin operators we have, we have to do number of master operators - number of fm operator so {}'.format(6-fmop, 6-2*fmop))
+        detunes = input('Now insert for each master operator the level of initial detuning between -15 and 15 (ex. 3 -6 7): ')
+        detunes = detunes.split()
+        if len(detunes) != (6 - fmop):
+            raise OperatorNumberError('Something went wrong with operators number.')
+        detunes = list(map(int, detunes))
+        self._detuneGenerator(*detunes)
+
+        print('\n--- Step 3 ---\nYou have now to decide ratio and index for every fm operator.')
+        ops = []
+        for x in range(1,6):
+            if x > (6 - fmop): break
+            op = input("Insert ratio between 1 and 64 and index between 0 and 0.5 if you want a fm operator, 'sin' if you want a sin operator or 'q' if you don't want other operators (ex. 12 0.345): ")
+            if op != 'sin':
+                op = op.split()
+                op = list(map(float, op))
+            ops.append(op)
+        self._operatorGenerator(*ops)
+
+        ans = input('\n --- Step 4 ---\nDo you want sliders to control operators parameters (y or n): ' )
+        if ans == 'y':
+            self._ctrlGenerator(*ops)
+        
+        self._outputGenerator()
+
+# ----- USER ALGORITHMS ----- #
+
 
 
 if __name__ == '__main__':
     s = Server().boot()
     s.setAmp(0.1)
 
-    a = DX7('electric piano').out()
+    a = DX7('user').out()
 
     Spectrum(a)
 
