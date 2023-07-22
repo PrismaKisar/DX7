@@ -65,6 +65,7 @@ class DX7(PyoObject):
 
         self._sinCount, self._fmCount = 0, 0
         self._opSituation = []
+        self._opList = [op1, op2, op3, op4, op5, op6]
 
         if isinstance(op1, str):
             self._op1 = self._SinOrFM('sin', '1')
@@ -126,36 +127,30 @@ class DX7(PyoObject):
 
         self._countChecker()
 
-    def _detuneGenerator(self, det1: int = None, det2: int = None, det3: int = None, det4: int = None, det5: int = None, det6: int = None):
+    def _detuneGenerator(self, det1 = None, det2 = None, det3 = None, det4 = None, det5 = None, det6 = None):
         if det1 != None:
             self._detune1 = Sig(det1)
-            self._detune1.ctrl(
-                map_list=[SLMap(-15, 15, 'lin', 'value', det1, 'int')], title='detune OP 1')
+            self._ctrlDet1 = det1
 
         if det2 != None:
             self._detune2 = Sig(det2)
-            self._detune2.ctrl(
-                map_list=[SLMap(-15, 15, 'lin', 'value', det2, 'int')], title='detune OP 2')
+            self._ctrlDet2 = det2
 
         if det3 != None:
             self._detune3 = Sig(det3)
-            self._detune3.ctrl(
-                map_list=[SLMap(-15, 15, 'lin', 'value', det3, 'int')], title='detune OP 3')
+            self._ctrlDet3 = det3
 
         if det4 != None:
             self._detune4 = Sig(det4)
-            self._detune4.ctrl(
-                map_list=[SLMap(-15, 15, 'lin', 'value', det4, 'int')], title='detune OP 4')
+            self._ctrlDet4 = det4
 
         if det5 != None:
             self._detune5 = Sig(det5)
-            self._detune5.ctrl(
-                map_list=[SLMap(-15, 15, 'lin', 'value', det5, 'int')], title='detune OP 5')
+            self._ctrlDet5 = det5
 
         if det6 != None:
             self._detune6 = Sig(det6)
-            self._detune6.ctrl(
-                map_list=[SLMap(-15, 15, 'lin', 'value', det6, 'int')], title='detune OP 6')
+            self._ctrlDet6 = det6
 
     def _ctrlGenerator(self, op1=None, op2=None, op3=None, op4=None, op5=None, op6=None):
         """
@@ -165,16 +160,22 @@ class DX7(PyoObject):
             ratiomap1 = SLMap(1, 64, 'lin', 'ratio', op1[0], 'int')
             indexmap1 = SLMap(0, 0.5, 'lin', 'index', op1[1])
             self._op1.ctrl(map_list=[ratiomap1, indexmap1], title='Operator 1')
+        if self._opSituation[0] != None:
+            self._detune1.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', self._ctrlDet1, 'int')], title='detune OP 1')
 
         if self._opSituation[1] == 'f':
             ratiomap2 = SLMap(1, 64, 'lin', 'ratio', op2[0], 'int')
             indexmap2 = SLMap(0, 0.5, 'lin', 'index', op2[1])
             self._op2.ctrl(map_list=[ratiomap2, indexmap2], title='Operator 2')
+        if self._opSituation[1] != None:
+            self._detune2.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', self._ctrlDet2, 'int')], title='detune OP 2')
 
         if self._opSituation[2] == 'f':
             ratiomap3 = SLMap(1, 64, 'lin', 'ratio', op3[0], 'int')
             indexmap3 = SLMap(0, 0.5, 'lin', 'index', op3[1])
             self._op3.ctrl(map_list=[ratiomap3, indexmap3], title='Operator 3')
+        if self._opSituation[2] != None:
+            self._detune3.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', self._ctrlDet3, 'int')], title='detune OP 3')
 
         if len(self._opSituation) == 3:
             return
@@ -183,6 +184,8 @@ class DX7(PyoObject):
             ratiomap4 = SLMap(1, 64, 'lin', 'ratio', op4[0], 'int')
             indexmap4 = SLMap(0, 0.5, 'lin', 'index', op4[1])
             self._op4.ctrl(map_list=[ratiomap4, indexmap4], title='Operator 4')
+        if self._opSituation[3] != None:
+            self._detune4.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', self._ctrlDet4, 'int')], title='detune OP 4')
 
         if len(self._opSituation) == 4:
             return
@@ -191,6 +194,8 @@ class DX7(PyoObject):
             ratiomap5 = SLMap(1, 64, 'lin', 'ratio', op5[0], 'int')
             indexmap5 = SLMap(0, 0.5, 'lin', 'index', op5[1])
             self._op5.ctrl(map_list=[ratiomap5, indexmap5], title='Operator 5')
+        if self._opSituation[4] != None:
+            self._detune5.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', self._ctrlDet5, 'int')], title='detune OP 5')
 
         if len(self._opSituation) == 5:
             return
@@ -199,22 +204,24 @@ class DX7(PyoObject):
             ratiomap6 = SLMap(1, 64, 'lin', 'ratio', op6[0], 'int')
             indexmap6 = SLMap(0, 0.5, 'lin', 'index', op6[1])
             self._op6.ctrl(map_list=[ratiomap6, indexmap6], title='Operator 6')
+        if self._opSituation[5] != None:
+            self._detune6.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', self._ctrlDet6, 'int')], title='detune OP 6')
 
     def _outputGenerator(self):
         opNumber = self._fmCount + self._sinCount
         self._output = 0
-        for x in range(1, opNumber):
-            if x == 1:
+        for x in range(opNumber):
+            if x == 0:
                 self._output += self._op1
-            if x == 2:
+            if x == 1:
                 self._output += self._op2
-            if x == 3:
+            if x == 2:
                 self._output += self._op3
-            if x == 4:
+            if x == 3:
                 self._output += self._op4
-            if x == 5:
+            if x == 4:
                 self._output += self._op5
-            if x == 6:
+            if x == 5:
                 self._output += self._op6
 
     def _countChecker(self):
@@ -276,6 +283,9 @@ class DX7(PyoObject):
         self._output.out(chnl, inc, dur, delay)
         return self
 
+    def ctrl(self):
+        self._ctrlGenerator(*self._opList)
+
     def __repr__(self):
         return super().__repr__()
 
@@ -285,35 +295,31 @@ class DX7(PyoObject):
         self._getLayout('./Images/algoTwentynine.png')
         self._detuneGenerator(0, 0, 0, 0)
         self._operatorGenerator([1, 0], [1, 0], 'sin', 'sin')
-        self._ctrlGenerator([1, 0], [1, 0], 'sin', 'sin')
         self._outputGenerator()
 
     def _6(self):
         self._getLayout('./Images/algoSix.png')
         self._detuneGenerator(0, 0, 0)
         self._operatorGenerator([1, 0], [1, 0], [1, 0])
-        self._ctrlGenerator([1, 0], [1, 0], [1, 0])
         self._outputGenerator()
 
     def _bell(self):
         self._getLayout('./Images/algoTwentynine.png')
         self._detuneGenerator(2, 6, -13, -7)
         self._operatorGenerator([13, 0.371], [31, 0.188], 'sin', 'sin')
-        self._ctrlGenerator([13, 0.371], [31, 0.188], 'sin', 'sin')
         self._outputGenerator()
 
     def _electricpiano(self):
         self._getLayout('./Images/algoSix.png')
         self._detuneGenerator(-3, 0, 7)
         self._operatorGenerator([1, 0.060], [14, 0.004], [1, 0.023])
-        self._ctrlGenerator([1, 0.060], [14, 0.004], [1, 0.023])
         self._outputGenerator()
     
     def _user(self):
-        print('\n--- Step 1 ---\nYou have to decide the number of operator with FM synthesis. Please note that DX7 has 6 operators and FM operator worth for two because is implicit that a sin modules it.')
+        print('\n--- Step 1 ---\nYou have to decide FM operators number. Please note that DX7 has 6 operators and FM operator worth for two because is implicit that a sin operator modules each one.')
         fmop = int(input('Insert number of FM operators (max 3): '))
 
-        print('\n--- Step 2 ---\nThe number of master operators is 6 - number of fm operators so {}. Then, to know how many sin operators we have, we have to do number of master operators - number of fm operator so {}'.format(6-fmop, 6-2*fmop))
+        print('\n--- Step 2 ---\nNumber of master operators: {}\nNumber of sin operators: {}'.format(6-fmop, 6-2*fmop))
         detunes = input('Now insert for each master operator the level of initial detuning between -15 and 15 (ex. 3 -6 7): ')
         detunes = detunes.split()
         if len(detunes) != (6 - fmop):
@@ -322,19 +328,17 @@ class DX7(PyoObject):
         self._detuneGenerator(*detunes)
 
         print('\n--- Step 3 ---\nYou have now to decide ratio and index for every fm operator.')
+        print("Insert ratio between 1 and 64 and index between 0 and 0.5 if you want a fm operator or 'sin' if you want a sin operator. Do that for all master operator (ex. 12 0.345.\n")
         ops = []
-        for x in range(1,6):
+        for x in range(1,7):
             if x > (6 - fmop): break
-            op = input("Insert ratio between 1 and 64 and index between 0 and 0.5 if you want a fm operator, 'sin' if you want a sin operator or 'q' if you don't want other operators (ex. 12 0.345): ")
+            op = input("Operator {}: ".format(x))
+
             if op != 'sin':
                 op = op.split()
                 op = list(map(float, op))
             ops.append(op)
         self._operatorGenerator(*ops)
-
-        ans = input('\n --- Step 4 ---\nDo you want sliders to control operators parameters (y or n): ' )
-        if ans == 'y':
-            self._ctrlGenerator(*ops)
         
         self._outputGenerator()
 
@@ -342,12 +346,17 @@ class DX7(PyoObject):
 
 
 
+
+
+# ----- TEST CODE ----- #
+
 if __name__ == '__main__':
     s = Server().boot()
     s.setAmp(0.1)
 
-    a = DX7('user').out()
+    a = DX7('6').out()
 
+    
     Spectrum(a)
 
     s.gui(locals())
