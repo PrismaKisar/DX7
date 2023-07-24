@@ -208,21 +208,9 @@ class DX7(PyoObject):
             self._detune6.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', self._ctrlDet6, 'int')], title='detune OP 6')
 
     def _outputGenerator(self):
-        opNumber = self._fmCount + self._sinCount
-        self._output = 0
-        for x in range(opNumber):
-            if x == 0:
-                self._output += self._op1
-            if x == 1:
-                self._output += self._op2
-            if x == 2:
-                self._output += self._op3
-            if x == 3:
-                self._output += self._op4
-            if x == 4:
-                self._output += self._op5
-            if x == 5:
-                self._output += self._op6
+        op_values = [getattr(self, f"_op{i}", 0) for i in range(1, 7)]
+        self._output = sum(op_values[:self._fmCount + self._sinCount])
+
 
     def _countChecker(self):
         count = self._sinCount + (2*self._fmCount)
@@ -231,36 +219,14 @@ class DX7(PyoObject):
                 "The must be less than 7, otherwise it wouldn't be a dx7")
 
     def _SinOrFM(self, obj, number, ratio=None, index=None):
-        if number == '1':
-            if obj == 'fm':
-                return FM(self._freqs*(2**(self._detune1/1200)), ratio, index, mul=self._amps)
-            else:
-                return Sin(self._freqs*(2**(self._detune1/1200)), mul=self._amps)
-        elif number == '2':
-            if obj == 'fm':
-                return FM(self._freqs*(2**(self._detune2/1200)), ratio, index, mul=self._amps)
-            else:
-                return Sin(self._freqs*(2**(self._detune2/1200)), mul=self._amps)
-        elif number == '3':
-            if obj == 'fm':
-                return FM(self._freqs*(2**(self._detune3/1200)), ratio, index, mul=self._amps)
-            else:
-                return Sin(self._freqs*(2**(self._detune3/1200)), mul=self._amps)
-        elif number == '4':
-            if obj == 'fm':
-                return FM(self._freqs*(2**(self._detune4/1200)), ratio, index, mul=self._amps)
-            else:
-                return Sin(self._freqs*(2**(self._detune4/1200)), mul=self._amps)
-        elif number == '5':
-            if obj == 'fm':
-                return FM(self._freqs*(2**(self._detune5/1200)), ratio, index, mul=self._amps)
-            else:
-                return Sin(self._freqs*(2**(self._detune5/1200)), mul=self._amps)
+        detune_value = getattr(self, f'_detune{number}')
+        frequency = self._freqs * (2 ** (detune_value / 1200))
+
+        if obj == 'fm':
+            return FM(frequency, ratio, index, mul=self._amps)
         else:
-            if obj == 'fm':
-                return FM(self._freqs*(2**(self._detune6/1200)), ratio, index, mul=self._amps)
-            else:
-                return Sin(self._freqs*(2**(self._detune6/1200)), mul=self._amps)
+            return Sine(frequency, mul=self._amps)
+
 
     @staticmethod
     def _getLayout(image):
@@ -354,7 +320,8 @@ if __name__ == '__main__':
     s = Server().boot()
     s.setAmp(0.1)
 
-    a = DX7('6').out()
+    a = DX7('electric piano').out()
+    a.ctrl()
 
     
     Spectrum(a)
