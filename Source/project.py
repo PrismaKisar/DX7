@@ -127,88 +127,35 @@ class DX7(PyoObject):
 
         self._countChecker()
 
-    def _detuneGenerator(self, det1 = None, det2 = None, det3 = None, det4 = None, det5 = None, det6 = None):
-        if det1 != None:
-            self._detune1 = Sig(det1)
-            self._ctrlDet1 = det1
+    def _detuneGenerator(self, *detunes):
+        detune_ctrls = [None] * 6
 
-        if det2 != None:
-            self._detune2 = Sig(det2)
-            self._ctrlDet2 = det2
+        for i, detune in enumerate(detunes):
+            if detune is not None:
+                detune_ctrls[i] = Sig(detune)
+                setattr(self, f'_ctrlDet{i + 1}', detune)
 
-        if det3 != None:
-            self._detune3 = Sig(det3)
-            self._ctrlDet3 = det3
+        self._detune1, self._detune2, self._detune3, self._detune4, self._detune5, self._detune6 = detune_ctrls
 
-        if det4 != None:
-            self._detune4 = Sig(det4)
-            self._ctrlDet4 = det4
 
-        if det5 != None:
-            self._detune5 = Sig(det5)
-            self._ctrlDet5 = det5
+    def _ctrlGenerator(self, *ops):
+        
+        param_titles = ['Operator 1', 'Operator 2', 'Operator 3', 'Operator 4', 'Operator 5', 'Operator 6']
+        detune_ctrls = [getattr(self, f'_detune{i + 1}', None) for i in range(6)]
 
-        if det6 != None:
-            self._detune6 = Sig(det6)
-            self._ctrlDet6 = det6
+        for i, op in enumerate(ops):
+            if i < len(self._opSituation) and self._opSituation[i] == 'f':
+                ratiomap = SLMap(1, 64, 'lin', 'ratio', op[0], 'int')
+                indexmap = SLMap(0, 0.5, 'lin', 'index', op[1])
+                getattr(self, f'_op{i + 1}').ctrl(map_list=[ratiomap, indexmap], title=param_titles[i])
 
-    def _ctrlGenerator(self, op1=None, op2=None, op3=None, op4=None, op5=None, op6=None):
-        """
-        This method must have the exact same input as operatorGenerator().
-        """
-        if self._opSituation[0] == 'f':
-            ratiomap1 = SLMap(1, 64, 'lin', 'ratio', op1[0], 'int')
-            indexmap1 = SLMap(0, 0.5, 'lin', 'index', op1[1])
-            self._op1.ctrl(map_list=[ratiomap1, indexmap1], title='Operator 1')
-        if self._opSituation[0] != None:
-            self._detune1.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', self._ctrlDet1, 'int')], title='detune OP 1')
+            if i < len(self._opSituation) and self._opSituation[i] is not None and detune_ctrls[i] is not None:
+                detune_ctrls[i].ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', getattr(self, f'_ctrlDet{i + 1}', 0), 'int')],
+                                    title=f'detune OP {i + 1}')
 
-        if self._opSituation[1] == 'f':
-            ratiomap2 = SLMap(1, 64, 'lin', 'ratio', op2[0], 'int')
-            indexmap2 = SLMap(0, 0.5, 'lin', 'index', op2[1])
-            self._op2.ctrl(map_list=[ratiomap2, indexmap2], title='Operator 2')
-        if self._opSituation[1] != None:
-            self._detune2.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', self._ctrlDet2, 'int')], title='detune OP 2')
-
-        if self._opSituation[2] == 'f':
-            ratiomap3 = SLMap(1, 64, 'lin', 'ratio', op3[0], 'int')
-            indexmap3 = SLMap(0, 0.5, 'lin', 'index', op3[1])
-            self._op3.ctrl(map_list=[ratiomap3, indexmap3], title='Operator 3')
-        if self._opSituation[2] != None:
-            self._detune3.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', self._ctrlDet3, 'int')], title='detune OP 3')
-
-        if len(self._opSituation) == 3:
-            return
-
-        if self._opSituation[3] == 'f':
-            ratiomap4 = SLMap(1, 64, 'lin', 'ratio', op4[0], 'int')
-            indexmap4 = SLMap(0, 0.5, 'lin', 'index', op4[1])
-            self._op4.ctrl(map_list=[ratiomap4, indexmap4], title='Operator 4')
-        if self._opSituation[3] != None:
-            self._detune4.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', self._ctrlDet4, 'int')], title='detune OP 4')
-
-        if len(self._opSituation) == 4:
-            return
-
-        if self._opSituation[4] == 'f':
-            ratiomap5 = SLMap(1, 64, 'lin', 'ratio', op5[0], 'int')
-            indexmap5 = SLMap(0, 0.5, 'lin', 'index', op5[1])
-            self._op5.ctrl(map_list=[ratiomap5, indexmap5], title='Operator 5')
-        if self._opSituation[4] != None:
-            self._detune5.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', self._ctrlDet5, 'int')], title='detune OP 5')
-
-        if len(self._opSituation) == 5:
-            return
-
-        if self._opSituation[5] == 'f':
-            ratiomap6 = SLMap(1, 64, 'lin', 'ratio', op6[0], 'int')
-            indexmap6 = SLMap(0, 0.5, 'lin', 'index', op6[1])
-            self._op6.ctrl(map_list=[ratiomap6, indexmap6], title='Operator 6')
-        if self._opSituation[5] != None:
-            self._detune6.ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', self._ctrlDet6, 'int')], title='detune OP 6')
 
     def _outputGenerator(self):
-        op_values = [getattr(self, f"_op{i}", 0) for i in range(1, 7)]
+        op_values = [getattr(self, f"_op{i}", 0) for i in range(1, 7)] 
         self._output = sum(op_values[:self._fmCount + self._sinCount])
 
 
@@ -320,7 +267,7 @@ if __name__ == '__main__':
     s = Server().boot()
     s.setAmp(0.1)
 
-    a = DX7('electric piano').out()
+    a = DX7('user').out()
     a.ctrl()
 
     
