@@ -67,6 +67,15 @@ class DX7(PyoObject):
         # Crea un controllo (slider) per regolare in tempo reale gli attacchi e i rilasci delle note.
         self._amps.ctrl(title='Attack and Release')
 
+    def _volumeGenerator(self, op):
+        # Crea una variabile di istanza per il volume dell'operatore specificato.
+        setattr(self, f'_volume{op}', Sig(1))
+
+        # Configura il controllo (slider) per il volume dell'operatore.
+        volume = getattr(self, f'_volume{op}')
+        volume.ctrl(map_list=[SLMap(0, 1, 'lin', 'value', 1)], title=f'Volume {op}')
+        return volume
+        
     def _operatorGenerator(self, op1=None, op2=None, op3=None, op4=None, op5=None, op6=None):
         """
         This method take in input 6 lists (if fm) or str (if sin), one for each operator. The lists contain in this exact order:
@@ -81,42 +90,47 @@ class DX7(PyoObject):
         self._opSituation = []
         self._opList = [op1, op2, op3, op4, op5, op6]
 
-
-        
-
         if isinstance(op1, str):
             self._op1 = self._SinOrFM('sin', '1')
+            self._op1 *= self._volumeGenerator(1)
             self._sinCount += 1
             self._opSituation.append('s')
         elif isinstance(op1, list):
             self._op1 = self._SinOrFM('fm', '1', op1[0], op1[1])
+            self._op1 *= self._volumeGenerator(1)
             self._fmCount += 1
             self._opSituation.append('f')
 
         if isinstance(op2, str):
             self._op2 = self._SinOrFM('sin', '2')
+            self._op2 *= self._volumeGenerator(2)
             self._sinCount += 1
             self._opSituation.append('s')
         elif isinstance(op2, list):
             self._op2 = self._SinOrFM('fm', '2', op2[0], op2[1])
+            self._op2 *= self._volumeGenerator(2)
             self._fmCount += 1
             self._opSituation.append('f')
 
         if isinstance(op3, str):
             self._op3 = self._SinOrFM('sin', '3')
+            self._op3 *= self._volumeGenerator(3)
             self._sinCount += 1
             self._opSituation.append('s')
         elif isinstance(op3, list):
             self._op3 = self._SinOrFM('fm', '3', op3[0], op3[1])
+            self._op3 *= self._volumeGenerator(3)
             self._fmCount += 1
             self._opSituation.append('f')
 
         if isinstance(op4, str):
             self._op4 = self._SinOrFM('sin', '4')
+            self._op4 *= self._volumeGenerator(4)
             self._sinCount += 1
             self._opSituation.append('s')
         elif isinstance(op4, list):
             self._op4 = self._SinOrFM('fm', '4', op4[0], op4[1])
+            self._op4 *= self._volumeGenerator(4)
             self._fmCount += 1
             self._opSituation.append('f')
 
@@ -124,10 +138,12 @@ class DX7(PyoObject):
 
         if isinstance(op5, str):
             self._op5 = self._SinOrFM('sin', '5')
+            self._op5 *= self._volumeGenerator(5)
             self._sinCount += 1
             self._opSituation.append('s')
         elif isinstance(op5, list):
             self._op5 = self._SinOrFM('fm', '5', op5[0], op5[1])
+            self._op5 *= self._volumeGenerator(5)
             self._fmCount += 1
             self._opSituation.append('f')
 
@@ -135,10 +151,12 @@ class DX7(PyoObject):
 
         if isinstance(op6, str):
             self._op6 = self._SinOrFM('sin', '6')
+            self._op6 *= self._volumeGenerator(6)
             self._sinCount += 1
             self._opSituation.append('s')
         elif isinstance(op6, list):
             self._op6 = self._SinOrFM('fm', '6', op6[0], op6[1])
+            self._op6 *= self._volumeGenerator(6)
             self._fmCount += 1
             self._opSituation.append('f')
 
