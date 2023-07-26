@@ -40,17 +40,31 @@ class DX7(PyoObject):
         self._base_objs = self._output.getBaseObjects()
 
     def _algoSelector(self):
-        algo = getattr(self, '_' + self._mode, None)
+        # Seleziona l'algoritmo in base alla modalità
+        modeMethodName = '_' + self._mode
+        algo = getattr(self, modeMethodName, None)
+        
+        # Se l'algoritmo esiste e può essere chiamato, eseguilo
         if algo is not None and callable(algo):
             algo()
         else:
-            print("Il metodo specificato non esiste o non è eseguibile.")
+            # Altrimenti, solleva un'eccezione con un messaggio di errore personalizzato
+            raise ValueError(f"L'algoritmo specificato '{modeMethodName}' non esiste o non è eseguibile.")
 
     def _midiSetup(self):
+        # Inizializza l'oggetto Notein per ricevere messaggi MIDI sulle note e velocità.
         notes = Notein(scale=1, poly=32)
+
+        # Attiva la tastiera virtuale per l'input MIDI.
         notes.keyboard()
+
+        # Memorizza le frequenze delle note ricevute in self._freqs.
         self._freqs = notes["pitch"]
+
+        # Crea un oggetto Port per gestire l'ampiezza (dinamica) delle note in base alla velocità.
         self._amps = Port(notes["velocity"], risetime=0.005, falltime=0.2)
+
+        # Crea un controllo (slider) per regolare in tempo reale gli attacchi e i rilasci delle note.
         self._amps.ctrl(title='Attack and Release')
 
     def _operatorGenerator(self, op1=None, op2=None, op3=None, op4=None, op5=None, op6=None):
@@ -66,6 +80,9 @@ class DX7(PyoObject):
         self._sinCount, self._fmCount = 0, 0
         self._opSituation = []
         self._opList = [op1, op2, op3, op4, op5, op6]
+
+
+        
 
         if isinstance(op1, str):
             self._op1 = self._SinOrFM('sin', '1')
@@ -128,52 +145,71 @@ class DX7(PyoObject):
         self._countChecker()
 
     def _detuneGenerator(self, *detunes):
+        # Crea una lista vuota di controlli di detune per ogni corda (6 corde in totale).
         detune_ctrls = [None] * 6
 
+        # Itera attraverso gli argomenti detunes (detune passati come argomenti variabili).
+        # Crea controlli Sig solo per i valori detune non None e li assegna agli attributi self._ctrlDet1, self._ctrlDet2, ecc.
         for i, detune in enumerate(detunes):
             if detune is not None:
                 detune_ctrls[i] = Sig(detune)
                 setattr(self, f'_ctrlDet{i + 1}', detune)
 
+        # Assegna i controlli di detune creati ai relativi attributi self._detune1, self._detune2, ecc.
         self._detune1, self._detune2, self._detune3, self._detune4, self._detune5, self._detune6 = detune_ctrls
 
-
     def _ctrlGenerator(self, *ops):
-        
+        # Titoli dei parametri degli operatori
         param_titles = ['Operator 1', 'Operator 2', 'Operator 3', 'Operator 4', 'Operator 5', 'Operator 6']
+
+        # Lista di controlli di detune per ciascuna corda, ottenuti dagli attributi self._detune1, self._detune2, ecc.
         detune_ctrls = [getattr(self, f'_detune{i + 1}', None) for i in range(6)]
 
+        # Itera attraverso gli operatori passati come argomenti variabili
         for i, op in enumerate(ops):
+            # Controlla se l'indice i è valido e se l'operatore corrispondente è abilitato ('f' indica attivo)
             if i < len(self._opSituation) and self._opSituation[i] == 'f':
+                # Configura le mappe di controllo per il rapporto di frequenza (ratiomap) e l'indice (indexmap) dell'operatore corrente
                 ratiomap = SLMap(1, 64, 'lin', 'ratio', op[0], 'int')
                 indexmap = SLMap(0, 0.5, 'lin', 'index', op[1])
+                
+                # Applica le mappe di controllo agli attributi dell'operatore corrente utilizzando il metodo .ctrl()
                 getattr(self, f'_op{i + 1}').ctrl(map_list=[ratiomap, indexmap], title=param_titles[i])
 
+            # Controlla se l'indice i è valido, se l'operatore corrispondente è abilitato e se esiste un controllo di detune per l'operatore
             if i < len(self._opSituation) and self._opSituation[i] is not None and detune_ctrls[i] is not None:
-                detune_ctrls[i].ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', getattr(self, f'_ctrlDet{i + 1}', 0), 'int')],
-                                    title=f'detune OP {i + 1}')
-
+                # Configura la mappa di controllo per il valore del detune dell'operatore corrente
+                detune_ctrls[i].ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', getattr(self, f'_ctrlDet{i + 1}', 0), 'int')], title=f'detune OP {i + 1}')
 
     def _outputGenerator(self):
-        op_values = [getattr(self, f"_op{i}", 0) for i in range(1, 7)] 
+        # Ottieni i valori degli operatori 1-6 dalla classe.
+        op_values = [getattr(self, f"_op{i}", 0) for i in range(1, 7)]
+
+        # Calcola l'output sommando i valori degli operatori selezionati (dai primi 0 a fmCount + sinCount - 1).
         self._output = sum(op_values[:self._fmCount + self._sinCount])
 
-
     def _countChecker(self):
-        count = self._sinCount + (2*self._fmCount)
+        # Calcola il numero totale di operatori combinando il numero di operatori sinusoidali (self._sinCount) e operatori FM doppi (2*self._fmCount).
+        count = self._sinCount + (2 * self._fmCount)
+
+        # Controlla se il numero totale di operatori supera 6 (limite massimo per il sintetizzatore DX7).
+        # Se supera 6, solleva un'eccezione di tipo OperatorNumberError.
         if count > 6:
-            raise OperatorNumberError(
-                "The must be less than 7, otherwise it wouldn't be a dx7")
+            raise OperatorNumberError("The number of operators must be less than 7, otherwise it wouldn't be a DX7")
 
     def _SinOrFM(self, obj, number, ratio=None, index=None):
+        # Ottieni il valore di detune per l'operatore corrente (numero).
         detune_value = getattr(self, f'_detune{number}')
+
+        # Calcola la frequenza tenendo conto del valore di detune (in centesimi).
         frequency = self._freqs * (2 ** (detune_value / 1200))
 
+        # Crea un oggetto FM o Sine in base al parametro obj.
+        # Utilizza la frequenza calcolata e il valore di ampiezza (self._amps) per il controllo della dinamica.
         if obj == 'fm':
             return FM(frequency, ratio, index, mul=self._amps)
         else:
             return Sine(frequency, mul=self._amps)
-
 
     @staticmethod
     def _getLayout(image):
@@ -267,7 +303,7 @@ if __name__ == '__main__':
     s = Server().boot()
     s.setAmp(0.1)
 
-    a = DX7('user').out()
+    a = DX7('electric piano').out()
     a.ctrl()
 
     
