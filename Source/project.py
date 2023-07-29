@@ -162,6 +162,9 @@ class DX7(PyoObject):
 
         self._countChecker()
 
+
+
+
     def _detuneGenerator(self, *detunes):
         # Crea una lista vuota di controlli di detune per ogni corda (6 corde in totale).
         detune_ctrls = [None] * 6
