@@ -62,7 +62,7 @@ class DX7(PyoObject):
         self._freqs = notes["pitch"]
 
         # Crea un oggetto Port per gestire l'ampiezza (dinamica) delle note in base alla velocità.
-        self._amps = Port(notes["velocity"], risetime=0.005, falltime=0.2)
+        self._amps = MidiAdsr(notes["velocity"])
 
         # Crea un controllo (slider) per regolare in tempo reale gli attacchi e i rilasci delle note.
         self._amps.ctrl(title='Attack and Release')
@@ -90,81 +90,19 @@ class DX7(PyoObject):
         self._opSituation = []
         self._opList = [op1, op2, op3, op4, op5, op6]
 
-        if isinstance(op1, str):
-            self._op1 = self._SinOrFM('sin', '1')
-            self._op1 *= self._volumeGenerator(1)
-            self._sinCount += 1
-            self._opSituation.append('s')
-        elif isinstance(op1, list):
-            self._op1 = self._SinOrFM('fm', '1', op1[0], op1[1])
-            self._op1 *= self._volumeGenerator(1)
-            self._fmCount += 1
-            self._opSituation.append('f')
+        for i, op in enumerate(self._opList, start=1):
+            if isinstance(op, str):
+                op_instance = self._SinOrFM('sin', str(i))
+                self._sinCount += 1
+                self._opSituation.append('s')
+            else:
+                op_instance = self._SinOrFM('fm', str(i), op[0], op[1])
+                self._fmCount += 1
+                self._opSituation.append('f')
 
-        if isinstance(op2, str):
-            self._op2 = self._SinOrFM('sin', '2')
-            self._op2 *= self._volumeGenerator(2)
-            self._sinCount += 1
-            self._opSituation.append('s')
-        elif isinstance(op2, list):
-            self._op2 = self._SinOrFM('fm', '2', op2[0], op2[1])
-            self._op2 *= self._volumeGenerator(2)
-            self._fmCount += 1
-            self._opSituation.append('f')
-
-        if isinstance(op3, str):
-            self._op3 = self._SinOrFM('sin', '3')
-            self._op3 *= self._volumeGenerator(3)
-            self._sinCount += 1
-            self._opSituation.append('s')
-        elif isinstance(op3, list):
-            self._op3 = self._SinOrFM('fm', '3', op3[0], op3[1])
-            self._op3 *= self._volumeGenerator(3)
-            self._fmCount += 1
-            self._opSituation.append('f')
-
-        if isinstance(op4, str):
-            self._op4 = self._SinOrFM('sin', '4')
-            self._op4 *= self._volumeGenerator(4)
-            self._sinCount += 1
-            self._opSituation.append('s')
-        elif isinstance(op4, list):
-            self._op4 = self._SinOrFM('fm', '4', op4[0], op4[1])
-            self._op4 *= self._volumeGenerator(4)
-            self._fmCount += 1
-            self._opSituation.append('f')
-
-        self._countChecker()
-
-        if isinstance(op5, str):
-            self._op5 = self._SinOrFM('sin', '5')
-            self._op5 *= self._volumeGenerator(5)
-            self._sinCount += 1
-            self._opSituation.append('s')
-        elif isinstance(op5, list):
-            self._op5 = self._SinOrFM('fm', '5', op5[0], op5[1])
-            self._op5 *= self._volumeGenerator(5)
-            self._fmCount += 1
-            self._opSituation.append('f')
-
-        self._countChecker()
-
-        if isinstance(op6, str):
-            self._op6 = self._SinOrFM('sin', '6')
-            self._op6 *= self._volumeGenerator(6)
-            self._sinCount += 1
-            self._opSituation.append('s')
-        elif isinstance(op6, list):
-            self._op6 = self._SinOrFM('fm', '6', op6[0], op6[1])
-            self._op6 *= self._volumeGenerator(6)
-            self._fmCount += 1
-            self._opSituation.append('f')
-
-        self._countChecker()
-
-
-
-
+            setattr(self, f"_op{i}", op_instance * self._volumeGenerator(i))
+            if not self._countChecker(): break
+          
     def _detuneGenerator(self, *detunes):
         # Crea una lista vuota di controlli di detune per ogni corda (6 corde in totale).
         detune_ctrls = [None] * 6
@@ -214,9 +152,9 @@ class DX7(PyoObject):
         count = self._sinCount + (2 * self._fmCount)
 
         # Controlla se il numero totale di operatori supera 6 (limite massimo per il sintetizzatore DX7).
-        # Se supera 6, solleva un'eccezione di tipo OperatorNumberError.
-        if count > 6:
-            raise OperatorNumberError("The number of operators must be less than 7, otherwise it wouldn't be a DX7")
+        if count >= 6:
+            return False
+        return True
 
     def _SinOrFM(self, obj, number, ratio=None, index=None):
         # Ottieni il valore di detune per l'operatore corrente (numero).
@@ -229,8 +167,7 @@ class DX7(PyoObject):
         # Utilizza la frequenza calcolata e il valore di ampiezza (self._amps) per il controllo della dinamica.
         if obj == 'fm':
             return FM(frequency, ratio, index, mul=self._amps)
-        else:
-            return Sine(frequency, mul=self._amps)
+        return Sine(frequency, mul=self._amps)
 
     @staticmethod
     def _getLayout(image):
@@ -262,25 +199,25 @@ class DX7(PyoObject):
 # ----- DEFAULT ALGORITHMS ----- #
 
     def _29(self):
-        self._getLayout('./Images/algoTwentynine.png')
+        #self._getLayout('./Images/algoTwentynine.png')
         self._detuneGenerator(0, 0, 0, 0)
         self._operatorGenerator([1, 0], [1, 0], 'sin', 'sin')
         self._outputGenerator()
 
     def _6(self):
-        self._getLayout('./Images/algoSix.png')
+        #self._getLayout('./Images/algoSix.png')
         self._detuneGenerator(0, 0, 0)
         self._operatorGenerator([1, 0], [1, 0], [1, 0])
         self._outputGenerator()
 
     def _bell(self):
-        self._getLayout('./Images/algoTwentynine.png')
+        #self._getLayout('./Images/algoTwentynine.png')
         self._detuneGenerator(2, 6, -13, -7)
         self._operatorGenerator([13, 0.371], [31, 0.188], 'sin', 'sin')
         self._outputGenerator()
 
     def _electricpiano(self):
-        self._getLayout('./Images/algoSix.png')
+        #self._getLayout('./Images/algoSix.png')
         self._detuneGenerator(-3, 0, 7)
         self._operatorGenerator([1, 0.060], [14, 0.004], [1, 0.023])
         self._outputGenerator()
@@ -313,10 +250,6 @@ class DX7(PyoObject):
         self._outputGenerator()
 
 # ----- USER ALGORITHMS ----- #
-
-
-
-
 
 # ----- TEST CODE ----- #
 
