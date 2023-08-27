@@ -1,6 +1,4 @@
 from pyo import *
-from PIL import Image
-
 
 class ImplementationError(Exception):
     pass
@@ -26,7 +24,7 @@ class DX7(PyoObject):
     >>> s.gui(locals())
     """
 
-    def __init__(self, mode: str = '6'):
+    def __init__(self, mode: str = 'electric piano'):
         PyoObject.__init__(self)
 
         if not isinstance(mode, str):
@@ -63,12 +61,14 @@ class DX7(PyoObject):
         # Crea un oggetto Port per gestire l'ampiezza (dinamica) delle note in base alla velocità.
         self._amps = MidiAdsr(self._notes["velocity"])
 
-        # Crea un controllo (slider) per regolare in tempo reale gli attacchi e i rilasci delle note.
-        self._amps.ctrl(title='Attack and Release')
-
     def _adsrGenerator(self, op):
         # Crea una variabile di istanza per il volume dell'operatore specificato.
-        setattr(self, f'_adsr{op}', MidiAdsr(self._notes["velocity"]))
+        try:
+            if self._adsrPresets:
+                preset = self._adsrPresets[op-1]
+                setattr(self, f'_adsr{op}', MidiAdsr(self._notes["velocity"], attack=preset[0], decay=preset[1], sustain=preset[2], release=preset[3], mul=self._volumeGenerator(op)))
+        except AttributeError:
+            setattr(self, f'_adsr{op}', MidiAdsr(self._notes["velocity"],  mul=self._volumeGenerator(op)))
 
         adsr = getattr(self, f'_adsr{op}')
         adsr.ctrl(title=f'adsr {op}')
@@ -80,7 +80,11 @@ class DX7(PyoObject):
 
         # Configura il controllo (slider) per il volume dell'operatore.
         volume = getattr(self, f'_volume{op}')
-        volume.ctrl(map_list=[SLMap(0, 1, 'lin', 'value', 1)], title=f'Volume {op}')
+        try: 
+            if self._volumePresets:
+                volume.ctrl(map_list=[SLMap(0, 1, 'lin', 'value', self._volumePresets[op-1])], title=f'Volume {op}')
+        except AttributeError:
+            volume.ctrl(map_list=[SLMap(0, 1, 'lin', 'value', 1)], title=f'Volume {op}')
         return volume
         
     def _operatorGenerator(self, op1=None, op2=None, op3=None, op4=None, op5=None, op6=None):
@@ -147,7 +151,7 @@ class DX7(PyoObject):
         op_values = [getattr(self, f"_op{i}", 0) for i in range(1, 7)]
 
         # Calcola l'output sommando i valori degli operatori selezionati (dai primi 0 a fmCount + sinCount - 1).
-        self._output = sum(op_values[:self._fmCount + self._sinCount])
+        self._output = Pan(sum(op_values[:self._fmCount + self._sinCount]))
 
     def _countChecker(self):
         # Calcola il numero totale di operatori combinando il numero di operatori sinusoidali (self._sinCount) e operatori FM doppi (2*self._fmCount).
@@ -168,14 +172,8 @@ class DX7(PyoObject):
         # Crea un oggetto FM o Sine in base al parametro obj.
         # Utilizza la frequenza calcolata e il valore di ampiezza (self._amps) per il controllo della dinamica.
         if obj == 'fm':
-            return FM(frequency, ratio, index, mul=self._adsrGenerator(self._fmCount+self._sinCount+1)*self._volumeGenerator(self._fmCount+self._sinCount+1))
-        return Sine(frequency, mul=self._adsrGenerator(self._fmCount+self._sinCount+1)*self._volumeGenerator(self._fmCount+self._sinCount+1))
-
-    @staticmethod
-    def _getLayout(image):
-        image = Image.open(image)
-        resized_image = image.resize((200, 200))
-        resized_image.show()
+            return FM(frequency, ratio, index, mul=self._adsrGenerator(self._fmCount+self._sinCount+1))
+        return Sine(frequency, mul=self._adsrGenerator(self._fmCount+self._sinCount+1))
 
     def play(self, dur=0, delay=0):
         self._output.play(dur, delay)
@@ -186,9 +184,6 @@ class DX7(PyoObject):
         return self
 
     def out(self, chnl=0, inc=1, dur=0, delay=0):
-        self._output = Pan(self._output)
-        self._output = Freeverb(self._output)
-        self._output.ctrl(title='Reverb')
         self._output.out(chnl, inc, dur, delay)
         return self
 
@@ -198,57 +193,51 @@ class DX7(PyoObject):
     def __repr__(self):
         return super().__repr__()
 
-# ----- DEFAULT ALGORITHMS ----- #
+# ----- ALGORITHMS ----- #
 
     def _bell(self):
-        #self._getLayout('./Images/algoTwentynine.png')
+        self._adsrPresets = [[0.010, 0.050, 0.700, 0.7],[0.010, 0.050, 0.700, 0.7],[0.010, 0.050, 0.700, 0.7],[0.010, 0.050, 0.700, 0.7]]
         self._detuneGenerator(2, 6, -13, -7)
         self._operatorGenerator([13, 0.371], [31, 0.188], 'sin', 'sin')
         self._outputGenerator()
-
-    def _electricpiano(self):
-        #self._getLayout('./Images/algoSix.png')
-        self._detuneGenerator(-3, 0, 7)
-        self._operatorGenerator([1, 0.060], [14, 0.004], [1, 0.023])
-        self._outputGenerator()
-    
-    def _user(self):
-        print('\n--- Step 1 ---\nYou have to decide FM operators number. Please note that DX7 has 6 operators and FM operator worth for two because is implicit that a sin operator modules each one.')
-        fmop = int(input('Insert number of FM operators (max 3): '))
-
-        print('\n--- Step 2 ---\nNumber of master operators: {}\nNumber of sin operators: {}'.format(6-fmop, 6-2*fmop))
-        detunes = input('Now insert for each master operator the level of initial detuning between -15 and 15 (ex. 3 -6 7): ')
-        detunes = detunes.split()
-        if len(detunes) != (6 - fmop):
-            raise OperatorNumberError('Something went wrong with operators number.')
-        detunes = list(map(int, detunes))
-        self._detuneGenerator(*detunes)
-
-        print('\n--- Step 3 ---\nYou have now to decide ratio and index for every fm operator.')
-        print("Insert ratio between 1 and 64 and index between 0 and 0.5 if you want a fm operator or 'sin' if you want a sin operator. Do that for all master operator (ex. 12 0.345.\n")
-        ops = []
-        for x in range(1,7):
-            if x > (6 - fmop): break
-            op = input("Operator {}: ".format(x))
-
-            if op != 'sin':
-                op = op.split()
-                op = list(map(float, op))
-            ops.append(op)
-        self._operatorGenerator(*ops)
+        self._output = MoogLP(self._output, 10000)
+        self._output = Delay1(self._output)
+        self._output = Chorus(self._output)
+        self._output = Freeverb(self._output)
         
+    def _electricpiano(self):
+        self._adsrPresets = [[0.031, 0.288, 0.408, 0.681],[0.035, 0.273, 0.385, 0.669],[0.023, 0.324, 0.419, 0.615]]
+        self._volumePresets = [1, 0.73, 0.88]
+        self._detuneGenerator(2, 0, 4)
+        self._operatorGenerator([1, 0.060], [14, 0.010], [1, 0.023])
         self._outputGenerator()
+        self._output = Freeverb(self._output)
 
-# ----- USER ALGORITHMS ----- #
+    def _bass(self):
+        self._adsrPresets = [[0.02, 0.02, 0.317, 0.1],[0.09, 0.233, 0.351, 0.1],[0.20, 0.234, 0.001, 0.1]]
+        self._volumePresets = [1, 1, 1]
+        self._detuneGenerator(0, 0, 0)
+        self._operatorGenerator([16, 0.50], [14, 0.64], [6, 0.7])
+        self._outputGenerator()
+        self._output = MoogLP(self._output, 400)
+        self._output = Disto(self._output,0.5)
 
-# ----- TEST CODE ----- #
+    def _pad(self):
+        self._adsrPresets = [[0.7, 0.6, 0.3, 0.6],[0.7, 0.6, 0.6, 0.6],[0.7, 0.6, 0.6, 0.6]]
+        self._volumePresets = [0.8, 1, 1]
+        self._detuneGenerator(0, 0, 0)
+        self._operatorGenerator([1, 0.4], [3, 0.04], [1, 0.3])
+        self._outputGenerator()
+        self._output = Disto(self._output,1)
+        self._output = Chorus(self._output)
+        self._output = MoogLP(self._output, 2000)
+        self._output = Freeverb(self._output, 0.7 ,1, 0.5)
 
 if __name__ == '__main__':
     s = Server().boot()
     s.setAmp(0.1)
 
     a = DX7('bell').out()
-    a.ctrl()
 
 
     Spectrum(a)
