@@ -5,10 +5,8 @@ from PIL import Image
 class ImplementationError(Exception):
     pass
 
-
 class OperatorNumberError(Exception):
     pass
-
 
 class DX7(PyoObject):
     """
@@ -29,7 +27,8 @@ class DX7(PyoObject):
     """
 
     def __init__(self, mode: str = '6'):
-        PyoObject.__init__(self, 1, 0)
+        PyoObject.__init__(self)
+
         if not isinstance(mode, str):
             raise TypeError('mode must be string')
         self._mode = mode.replace(' ', '')
@@ -53,19 +52,27 @@ class DX7(PyoObject):
 
     def _midiSetup(self):
         # Inizializza l'oggetto Notein per ricevere messaggi MIDI sulle note e velocità.
-        notes = Notein(scale=1, poly=32)
+        self._notes = Notein(scale=1, poly=32)
 
         # Attiva la tastiera virtuale per l'input MIDI.
-        notes.keyboard()
+        self._notes.keyboard()
 
         # Memorizza le frequenze delle note ricevute in self._freqs.
-        self._freqs = notes["pitch"]
+        self._freqs = self._notes["pitch"]
 
         # Crea un oggetto Port per gestire l'ampiezza (dinamica) delle note in base alla velocità.
-        self._amps = MidiAdsr(notes["velocity"])
+        self._amps = MidiAdsr(self._notes["velocity"])
 
         # Crea un controllo (slider) per regolare in tempo reale gli attacchi e i rilasci delle note.
         self._amps.ctrl(title='Attack and Release')
+
+    def _adsrGenerator(self, op):
+        # Crea una variabile di istanza per il volume dell'operatore specificato.
+        setattr(self, f'_adsr{op}', MidiAdsr(self._notes["velocity"]))
+
+        adsr = getattr(self, f'_adsr{op}')
+        adsr.ctrl(title=f'adsr {op}')
+        return adsr
 
     def _volumeGenerator(self, op):
         # Crea una variabile di istanza per il volume dell'operatore specificato.
@@ -100,7 +107,7 @@ class DX7(PyoObject):
                 self._fmCount += 1
                 self._opSituation.append('f')
 
-            setattr(self, f"_op{i}", op_instance * self._volumeGenerator(i))
+            setattr(self, f"_op{i}", op_instance)
             if not self._countChecker(): break
           
     def _detuneGenerator(self, *detunes):
@@ -117,28 +124,23 @@ class DX7(PyoObject):
         # Assegna i controlli di detune creati ai relativi attributi self._detune1, self._detune2, ecc.
         self._detune1, self._detune2, self._detune3, self._detune4, self._detune5, self._detune6 = detune_ctrls
 
-    def _ctrlGenerator(self, *ops):
-        # Titoli dei parametri degli operatori
-        param_titles = ['Operator 1', 'Operator 2', 'Operator 3', 'Operator 4', 'Operator 5', 'Operator 6']
-
-        # Lista di controlli di detune per ciascuna corda, ottenuti dagli attributi self._detune1, self._detune2, ecc.
-        detune_ctrls = [getattr(self, f'_detune{i + 1}', None) for i in range(6)]
-
-        # Itera attraverso gli operatori passati come argomenti variabili
+    def _parametersCtrl(self, ops):
         for i, op in enumerate(ops):
-            # Controlla se l'indice i è valido e se l'operatore corrispondente è abilitato ('f' indica attivo)
-            if i < len(self._opSituation) and self._opSituation[i] == 'f':
-                # Configura le mappe di controllo per il rapporto di frequenza (ratiomap) e l'indice (indexmap) dell'operatore corrente
+            if op == None: break
+            if self._opSituation[i] == 'f':
                 ratiomap = SLMap(1, 64, 'lin', 'ratio', op[0], 'int')
                 indexmap = SLMap(0, 0.5, 'lin', 'index', op[1])
-                
-                # Applica le mappe di controllo agli attributi dell'operatore corrente utilizzando il metodo .ctrl()
-                getattr(self, f'_op{i + 1}').ctrl(map_list=[ratiomap, indexmap], title=param_titles[i])
-
-            # Controlla se l'indice i è valido, se l'operatore corrispondente è abilitato e se esiste un controllo di detune per l'operatore
-            if i < len(self._opSituation) and self._opSituation[i] is not None and detune_ctrls[i] is not None:
-                # Configura la mappa di controllo per il valore del detune dell'operatore corrente
+                getattr(self, f'_op{i + 1}').ctrl(map_list=[ratiomap, indexmap], title=f'Operator {i+1}')
+    
+    def _detunesCtrl(self, ops):
+        detune_ctrls = [getattr(self, f'_detune{i + 1}', None) for i in range(6)]
+        for i, op in enumerate(ops):
+            if detune_ctrls[i] is not None:
                 detune_ctrls[i].ctrl(map_list=[SLMap(-15, 15, 'lin', 'value', getattr(self, f'_ctrlDet{i + 1}', 0), 'int')], title=f'detune OP {i + 1}')
+                
+    def _ctrlGenerator(self, *ops):
+        self._parametersCtrl(ops)
+        self._detunesCtrl(ops)
 
     def _outputGenerator(self):
         # Ottieni i valori degli operatori 1-6 dalla classe.
@@ -166,8 +168,8 @@ class DX7(PyoObject):
         # Crea un oggetto FM o Sine in base al parametro obj.
         # Utilizza la frequenza calcolata e il valore di ampiezza (self._amps) per il controllo della dinamica.
         if obj == 'fm':
-            return FM(frequency, ratio, index, mul=self._amps)
-        return Sine(frequency, mul=self._amps)
+            return FM(frequency, ratio, index, mul=self._adsrGenerator(self._fmCount+self._sinCount+1)*self._volumeGenerator(self._fmCount+self._sinCount+1))
+        return Sine(frequency, mul=self._adsrGenerator(self._fmCount+self._sinCount+1)*self._volumeGenerator(self._fmCount+self._sinCount+1))
 
     @staticmethod
     def _getLayout(image):
@@ -197,18 +199,6 @@ class DX7(PyoObject):
         return super().__repr__()
 
 # ----- DEFAULT ALGORITHMS ----- #
-
-    def _29(self):
-        #self._getLayout('./Images/algoTwentynine.png')
-        self._detuneGenerator(0, 0, 0, 0)
-        self._operatorGenerator([1, 0], [1, 0], 'sin', 'sin')
-        self._outputGenerator()
-
-    def _6(self):
-        #self._getLayout('./Images/algoSix.png')
-        self._detuneGenerator(0, 0, 0)
-        self._operatorGenerator([1, 0], [1, 0], [1, 0])
-        self._outputGenerator()
 
     def _bell(self):
         #self._getLayout('./Images/algoTwentynine.png')
@@ -257,10 +247,10 @@ if __name__ == '__main__':
     s = Server().boot()
     s.setAmp(0.1)
 
-    a = DX7('electric piano').out()
+    a = DX7('bell').out()
     a.ctrl()
 
-    
+
     Spectrum(a)
 
     s.gui(locals())
