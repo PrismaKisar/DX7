@@ -1,4 +1,5 @@
 from pyo import *
+from effects import *
 
 class ImplementationError(Exception):
     pass
@@ -46,7 +47,7 @@ class DX7(PyoObject):
             algo()
         else:
             # Altrimenti, solleva un'eccezione con un messaggio di errore personalizzato
-            raise ValueError(f"L'algoritmo specificato '{modeMethodName}' non esiste o non è eseguibile.")
+            raise ValueError(f"L'algoritmo specificato '{modeMethodName[1:]}' non esiste o non è eseguibile.")
 
     def _midiSetup(self):
         # Inizializza l'oggetto Notein per ricevere messaggi MIDI sulle note e velocità.
@@ -201,7 +202,6 @@ class DX7(PyoObject):
         self._operatorGenerator([13, 0.371], [31, 0.188], 'sin', 'sin')
         self._outputGenerator()
         self._output = MoogLP(self._output, 10000)
-        self._output = Delay1(self._output)
         self._output = Chorus(self._output)
         self._output = Freeverb(self._output)
         
@@ -213,6 +213,36 @@ class DX7(PyoObject):
         self._outputGenerator()
         self._output = Freeverb(self._output)
 
+    def _lead1(self):
+        self._adsrPresets = [[0.031, 0.288, 0.408, 0.681],[0.035, 0.273, 0.385, 0.669],[0.023, 0.324, 0.419, 0.615]]
+        self._volumePresets = [1, 0.73, 0.88]
+        self._detuneGenerator(2, 0, 4)
+        self._operatorGenerator([1, 0.060], [14, 0.010], [1, 0.023])
+        self._outputGenerator()
+        self._output = Compress(self._output, mul=3)
+        self._output = Crunch(self._output)
+        self._output = Freeverb(self._output)
+
+    def _lead3(self):
+        self._adsrPresets = [[0.031, 0.288, 0.408, 0.681],[0.035, 0.273, 0.385, 0.669],[0.023, 0.324, 0.419, 0.615]]
+        self._volumePresets = [1, 0.73, 0.88]
+        self._detuneGenerator(2, 0, 4)
+        self._operatorGenerator([1, 0.060], [14, 0.010], [1, 0.023])
+        self._outputGenerator()
+        self._output = Compress(self._output, mul=3)
+        self._output = Bitcrush(self._output, 12)
+
+    def _bass2(self):
+        self._adsrPresets = [[0.031, 0.288, 0.408, 0.1],[0.035, 0.273, 0.385, 0.1],[0.023, 0.324, 0.419, 0.1]]
+        self._volumePresets = [1, 0.73, 0.88]
+        self._detuneGenerator(0, 0, 0)
+        self._operatorGenerator([1, 0.060], [14, 0.010], [1, 0.023])
+        self._outputGenerator()
+        self._output = Compress(self._output, mul=3)
+        self._output = Bitcrush(self._output, 8)        
+        self._output = Zap(self._output)
+        self._output = MoogLP(self._output, 400)
+
     def _bass(self):
         self._adsrPresets = [[0.02, 0.02, 0.317, 0.1],[0.09, 0.233, 0.351, 0.1],[0.20, 0.234, 0.001, 0.1]]
         self._volumePresets = [1, 1, 1]
@@ -222,22 +252,43 @@ class DX7(PyoObject):
         self._output = MoogLP(self._output, 400)
         self._output = Disto(self._output,0.5)
 
-    def _pad(self):
+    def _pad1(self):
         self._adsrPresets = [[0.7, 0.6, 0.3, 0.6],[0.7, 0.6, 0.6, 0.6],[0.7, 0.6, 0.6, 0.6]]
         self._volumePresets = [0.8, 1, 1]
         self._detuneGenerator(0, 0, 0)
         self._operatorGenerator([1, 0.4], [3, 0.04], [1, 0.3])
         self._outputGenerator()
-        self._output = Disto(self._output,1)
+        self._output = Overdrive(self._output)
         self._output = Chorus(self._output)
         self._output = MoogLP(self._output, 2000)
         self._output = Freeverb(self._output, 0.7 ,1, 0.5)
+
+    def _pad2(self):
+        self._adsrPresets = [[0.7, 0.6, 0.3, 0.6],[0.7, 0.6, 0.6, 0.6],[0.7, 0.6, 0.6, 0.6]]
+        self._volumePresets = [0.8, 1, 1]
+        self._detuneGenerator(0, 0, 0)
+        self._operatorGenerator([1, 0.4], [3, 0.04], [1, 0.3])
+        self._outputGenerator()
+        self._output = Disto(self._output,0.5)
+        self._output = Chorus(self._output)
+        self._output = MoogLP(self._output, 2000)
+        self._output = Freeverb(self._output, 0.7 ,1, 0.5)
+
+    def _lead2(self):
+        self._adsrPresets = [[0.031, 0.288, 0.408, 0.681],[0.035, 0.273, 0.385, 0.669],[0.023, 0.324, 0.419, 0.615]]
+        self._volumePresets = [1, 0.73, 0.88]
+        self._detuneGenerator(2, 0, 4)
+        self._operatorGenerator([1, 0.060], [14, 0.010], [1, 0.023])
+        self._outputGenerator()
+        self._output = Compress(self._output, mul=3)
+        self._output = Tube(self._output)
+
 
 if __name__ == '__main__':
     s = Server().boot()
     s.setAmp(0.1)
 
-    a = DX7('bell').out()
+    a = DX7('lead2').out()
 
 
     Spectrum(a)
