@@ -39,10 +39,10 @@ class DX7(PyoObject):
         self._notes.keyboard()
         self._freqs = self._notes["pitch"]
         self._amps = MidiAdsr(self._notes["velocity"])
-
+        
     def _algoSelector(self):
         """Select the algorithm based on 'mode' attribute."""
-        modeMethodName = '_' + self._mode
+        modeMethodName = '_' + self._mode.lower()
         algo = getattr(self, modeMethodName, None)
         
         # Checks if the algorithm exists and calls it the associated method
@@ -53,7 +53,7 @@ class DX7(PyoObject):
           
     def _detuneGenerator(self, *detunes):
         """
-        Create a list of Sig objects or None for provided detunes and Set instance variables for non-None detune_ctrls.
+        Create a list of Sig objects or None for provided detunes and set instance variables for non-None detune_ctrls.
 
         :Args:
 
@@ -91,18 +91,18 @@ class DX7(PyoObject):
 
         for i, op in enumerate(self._opList, start=1):
             if isinstance(op, str):
-                op_instance = self._SinOrFM('sin', str(i))
+                op_instance = self._sinOrFm('sin', str(i))
                 self._sinCount += 1
                 self._opSituation.append('s')
             else:
-                op_instance = self._SinOrFM('fm', str(i), op[0], op[1])
+                op_instance = self._sinOrFm('fm', str(i), op[0], op[1])
                 self._fmCount += 1
                 self._opSituation.append('f')
 
             setattr(self, f"_op{i}", op_instance)
             if not self._countChecker(): break
   
-    def _SinOrFM(self, obj: str, opNumber: int, ratio: int = None, index: float = None):
+    def _sinOrFm(self, obj: str, opNumber: int, ratio: int = None, index: float = None):
         """
         Create a sine or FM by also setting the detune level.
 
@@ -121,7 +121,9 @@ class DX7(PyoObject):
         frequency = self._freqs * (2 ** (detune_value / 1200))
         if obj == 'fm':
             return FM(frequency, ratio, index, mul=self._adsrGenerator(self._fmCount+self._sinCount+1))
-        return Sine(frequency, mul=self._adsrGenerator(self._fmCount+self._sinCount+1))
+        else:
+            setattr(self, f'_sinmul{opNumber}', Sig(1))
+            return Sine(frequency*getattr(self, f'_sinmul{opNumber}'), mul=self._adsrGenerator(self._fmCount+self._sinCount+1))
 
     def _adsrGenerator(self, opNumber: int):
         """
@@ -186,6 +188,8 @@ class DX7(PyoObject):
                 ratiomap = SLMap(1, 64, 'lin', 'ratio', op[0], 'int')
                 indexmap = SLMap(0, 0.5, 'lin', 'index', op[1])
                 getattr(self, f'_op{i + 1}').ctrl(map_list=[ratiomap, indexmap], title=f'Operator {i+1}')
+            if self._opSituation[i] == 's':
+                getattr(self, f'_sinmul{i + 1}').ctrl(map_list=[SLMap(1, 64, 'lin', 'value', 1)], title=f'Operator {i+1}')
     
     def _detunesCtrl(self, ops):
         """Generate sliders for detune control for each operator."""
@@ -219,8 +223,6 @@ class DX7(PyoObject):
         self._detuneGenerator(2, 6, -13, -7)
         self._operatorGenerator([13, 0.371], [31, 0.188], 'sin', 'sin')
         self._outputGenerator()
-        self._output = MoogLP(self._output, 10000)
-        self._output = Chorus(self._output)
         self._output = Freeverb(self._output)
         
     def _electricpiano(self):
@@ -231,7 +233,7 @@ class DX7(PyoObject):
         self._outputGenerator()
         self._output = Freeverb(self._output)
 
-    def _lead1(self):
+    def _pluck(self):
         self._adsrPresets = [[0.031, 0.288, 0.408, 0.681],[0.035, 0.273, 0.385, 0.669],[0.023, 0.324, 0.419, 0.615]]
         self._volumePresets = [1, 0.73, 0.88]
         self._detuneGenerator(2, 0, 4)
@@ -241,7 +243,7 @@ class DX7(PyoObject):
         self._output = Crunch(self._output)
         self._output = Freeverb(self._output)
 
-    def _lead2(self):
+    def _lead1(self):
         self._adsrPresets = [[0.031, 0.288, 0.408, 0.681],[0.035, 0.273, 0.385, 0.669],[0.023, 0.324, 0.419, 0.615]]
         self._volumePresets = [1, 0.73, 0.88]
         self._detuneGenerator(2, 0, 4)
@@ -250,7 +252,7 @@ class DX7(PyoObject):
         self._output = Compress(self._output, mul=3)
         self._output = Tube(self._output)
 
-    def _lead3(self):
+    def _lead2(self):
         self._adsrPresets = [[0.031, 0.288, 0.408, 0.681],[0.035, 0.273, 0.385, 0.669],[0.023, 0.324, 0.419, 0.615]]
         self._volumePresets = [1, 0.73, 0.88]
         self._detuneGenerator(2, 0, 4)
@@ -305,8 +307,8 @@ if __name__ == '__main__':
     s = Server().boot()
     s.setAmp(0.1)
 
-    a = DX7('pad1').out()
+    a = DX7('electric piano').out()
     a.ctrl()
     Spectrum(a)
 
-    s.gui(locals())
+    s.gui(None)
